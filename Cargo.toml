@@ -1,0 +1,18 @@
+[package]
+authors = ["Ben Bar-Or <benbaror@gmail.com>"]
+edition = "2021"
+name = "unix_time_calculator"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+web-sys = '0.3'
+yew = '0.19.3'
+stdweb = '0.4'
+regex = "1"
+
+[dependencies.chrono]
+version = '0.4.19'
+default-features = false
+features = ["wasmbind", "js-sys"]
