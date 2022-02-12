@@ -1,61 +1,58 @@
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, FixedOffset, NaiveDateTime};
 use regex::Regex;
-use std::time::Duration;
 use web_sys::HtmlInputElement;
 use yew::{html, Component, Context, Html, InputEvent, TargetCast};
+mod parser;
+use parser::{Expression, State};
 
-fn now() -> Option<DateTime<Utc>> {
-    let duration = Duration::from_secs_f64(stdweb::web::Date::now() / 1000.0);
-    NaiveDateTime::from_timestamp_opt(duration.as_secs() as i64, 0)
-        .map(|naive_date_time| DateTime::from_utc(naive_date_time, Utc))
+fn now() -> i64 {
+    (stdweb::web::Date::now() / 1000.0) as i64
 }
 
-fn get_time_zone(text: &str) -> FixedOffset {
+fn get_time_zone(text: &str) -> Option<FixedOffset> {
     let re = Regex::new(r"^#UTC([+-])(\d{1,2})$").unwrap();
     match re.captures(text.trim()) {
         Some(x) => {
             if x.len() != 3 {
-                return FixedOffset::east(0);
+                return None;
             }
             let sign = &x[1];
-            let value = match (&x[2]).parse::<i32>().unwrap_or(0) {
-                x @ -23..=23 => x * 3600,
-                _ => 0,
+            let value = match (&x[2]).parse::<i32>().unwrap_or(-25) {
+                x @ -23..=23 => Some(x * 3600),
+                _ => None,
             };
-            match sign {
-                "+" => FixedOffset::east(value),
-                "-" => FixedOffset::east(-value),
-                _ => FixedOffset::east(0),
+            match (sign, value) {
+                ("+", Some(value)) => Some(FixedOffset::east(value)),
+                ("-", Some(value)) => Some(FixedOffset::east(-value)),
+                _ => None,
             }
         }
-        _ => FixedOffset::east(0),
+        _ => None,
     }
 }
 
-fn parse(input: &str) -> Record {
-    if input.eq_ignore_ascii_case("now") {
-        return Record::new(now());
+fn parse(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Record {
+    let records: Vec<Expression> = records
+        .iter()
+        .map(|record| match record {
+            Record::Duration(d) => Expression::Duration(*d),
+            Record::DateTime(d) => Expression::Timestamp(d.timestamp()),
+            _ => Expression::None,
+        })
+        .collect();
+    let state = State::new(offset.local_minus_utc(), now, &records);
+    let result = parser::arithmetic::expression(input, &state);
+    match result {
+        Ok(value) => match value {
+            Expression::Timestamp(t) => Record::timestamp(t, offset),
+            Expression::Duration(d) => Record::duration(d),
+            _ => Record::None,
+        },
+        _ => match get_time_zone(input) {
+            Some(offset) => Record::Offset(offset),
+            _ => Record::None,
+        },
     }
-    let timestamp = match input.parse::<i64>() {
-        Ok(r) => Some(r),
-        Err(_) => None,
-    };
-    let date_time_2 = match Utc.datetime_from_str(input, "%Y-%m-%d %H:%M:%S") {
-        Ok(r) => Some(r),
-        Err(_) => None,
-    };
-    let naive_date_time = match timestamp {
-        Some(timestamp) => NaiveDateTime::from_timestamp_opt(timestamp, 0),
-        _ => None,
-    };
-    let date_time: Option<DateTime<Utc>> =
-        naive_date_time.map(|naive_date_time| DateTime::from_utc(naive_date_time, Utc));
-
-    let date_time = match date_time {
-        Some(date_time) => Some(date_time),
-        _ => date_time_2,
-    };
-    Record::new(date_time)
 }
 
 // .format("%Y-%m-%d %H:%M:%S").to_string()
@@ -64,34 +61,84 @@ enum Msg {
     InputValue(String),
 }
 
-struct Record {
-    datetime: Option<DateTime<Utc>>,
-    offset: FixedOffset,
+enum Record {
+    DateTime(DateTime<FixedOffset>),
+    Duration(Duration),
+    Offset(FixedOffset),
+    None,
+}
+
+pub trait ToFormattedString {
+    fn to_fmt_string(&self) -> String;
+}
+
+impl ToFormattedString for Duration {
+    fn to_fmt_string(&self) -> String {
+        let (abs, sign) = if self.num_milliseconds() < 0 {
+            (-*self, "-")
+        } else {
+            (*self, "")
+        };
+        let days = abs.num_days();
+        let hours = abs.num_hours() - days * 24;
+        let minutes = abs.num_minutes() - days * 24 * 60 - hours * 60;
+        let seconds = abs.num_seconds() - days * 24 * 60 * 60 - hours * 60 * 60 - minutes * 60;
+        let milliseconds = abs.num_milliseconds()
+            - days * 24 * 60 * 60 * 1000
+            - hours * 60 * 60 * 1000
+            - minutes * 60 * 1000
+            - seconds * 1000;
+        let mut string = sign.to_string();
+        if days > 0 {
+            string = format!("{string}{}d", days);
+        }
+        if hours > 0 {
+            string = format!("{string}{}h", hours);
+        }
+        if minutes > 0 {
+            string = format!("{string}{}m", minutes);
+        }
+        if seconds > 0 {
+            string = format!("{string}{}s", seconds);
+        }
+        if milliseconds > 0 {
+            string = format!("{string}{}ms", milliseconds);
+        }
+        string
+    }
 }
 
 impl Record {
-    fn new(datetime: Option<DateTime<Utc>>) -> Self {
-        Self {
-            datetime,
-            offset: FixedOffset::east(0),
+    fn timestamp(timestamp: i64, offset: FixedOffset) -> Self {
+        let naive_date_time = NaiveDateTime::from_timestamp_opt(timestamp, 0);
+        match naive_date_time {
+            Some(d) => Self::DateTime(DateTime::from_utc(d, offset)),
+            _ => Record::None,
         }
     }
+
+    fn duration(duration: Duration) -> Self {
+        Self::Duration(duration)
+    }
+
     fn empty() -> Self {
-        Self {
-            datetime: None,
-            offset: FixedOffset::east(0),
-        }
+        Self::None
     }
+
     fn to_datetime_string(&self) -> String {
-        match self.datetime {
-            Some(datetime) => datetime.with_timezone(&self.offset).to_string(),
+        match self {
+            Self::DateTime(datetime) => datetime.to_string(),
+            Self::Duration(duration) => duration.to_fmt_string(),
+            Self::Offset(offset) => format!("UTC{}", offset),
             _ => "...".to_string(),
         }
     }
 
     fn to_timestamp_string(&self) -> String {
-        match self.datetime {
-            Some(datetime) => datetime.timestamp().to_string(),
+        match self {
+            Self::DateTime(datetime) => datetime.timestamp().to_string(),
+            Self::Duration(duration) => (duration.num_milliseconds() as f64 / 1000.).to_string(),
+            Self::Offset(offset) => format!("UTC{}", offset),
             _ => "...".to_string(),
         }
     }
@@ -118,12 +165,13 @@ impl Component for Container {
                 let mut records = vec![];
                 let mut offset = FixedOffset::east(0);
                 let split = input.split('\n');
+                let now = now();
                 for s in split {
-                    let mut record = parse(s);
-                    record.offset = offset;
-                    if record.datetime == None {
-                        offset = get_time_zone(s);
-                    }
+                    let record = parse(s, offset, now, &records);
+                    offset = match record {
+                        Record::Offset(offset) => offset,
+                        _ => offset,
+                    };
                     records.push(record);
                 }
                 self.records = records;
@@ -146,7 +194,7 @@ impl Component for Container {
                     <div class="banner">
                         <h1 class="title">{ title }</h1>
                         <div class="github">
-                            <a href="https://github.com">
+                            <a href="https://github.com/benbaror/utc">
                             <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
                             </a>
                         </div>

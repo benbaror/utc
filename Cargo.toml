@@ -11,6 +11,7 @@ web-sys = '0.3'
 yew = '0.19.3'
 stdweb = '0.4'
 regex = "1"
+peg = ">=0.8.0"
 
 [dependencies.chrono]
 version = '0.4.19'
