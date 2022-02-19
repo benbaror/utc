@@ -1,61 +1,17 @@
 use chrono::{DateTime, Duration, FixedOffset, NaiveDateTime};
-use regex::Regex;
+use parser::Expression;
 use web_sys::HtmlInputElement;
 use yew::{html, Component, Context, Html, InputEvent, TargetCast};
 mod parser;
-use parser::{Expression, State};
 
 fn now() -> i64 {
     (stdweb::web::Date::now() / 1000.0) as i64
 }
 
-fn get_time_zone(text: &str) -> Option<FixedOffset> {
-    let re = Regex::new(r"^#UTC([+-])(\d{1,2})$").unwrap();
-    match re.captures(text.trim()) {
-        Some(x) => {
-            if x.len() != 3 {
-                return None;
-            }
-            let sign = &x[1];
-            let value = match (&x[2]).parse::<i32>().unwrap_or(-25) {
-                x @ -23..=23 => Some(x * 3600),
-                _ => None,
-            };
-            match (sign, value) {
-                ("+", Some(value)) => Some(FixedOffset::east(value)),
-                ("-", Some(value)) => Some(FixedOffset::east(-value)),
-                _ => None,
-            }
-        }
-        _ => None,
-    }
+fn parse(input: String, now: i64) -> Vec<Record> {
+    let records = parser::parse(input, now);
+    records.iter().map(|record| record.into()).collect()
 }
-
-fn parse(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Record {
-    let records: Vec<Expression> = records
-        .iter()
-        .map(|record| match record {
-            Record::Duration(d) => Expression::Duration(*d),
-            Record::DateTime(d) => Expression::Timestamp(d.timestamp()),
-            _ => Expression::None,
-        })
-        .collect();
-    let state = State::new(offset.local_minus_utc(), now, &records);
-    let result = parser::arithmetic::expression(input, &state);
-    match result {
-        Ok(value) => match value {
-            Expression::Timestamp(t) => Record::timestamp(t, offset),
-            Expression::Duration(d) => Record::duration(d),
-            _ => Record::None,
-        },
-        _ => match get_time_zone(input) {
-            Some(offset) => Record::Offset(offset),
-            _ => Record::None,
-        },
-    }
-}
-
-// .format("%Y-%m-%d %H:%M:%S").to_string()
 
 enum Msg {
     InputValue(String),
@@ -68,12 +24,26 @@ enum Record {
     None,
 }
 
+impl From<&parser::Record> for Record {
+    fn from(record: &parser::Record) -> Self {
+        match record.expression {
+            Expression::Timestamp(t) => Self::timestamp(t, record.offset),
+            Expression::Duration(d) => Self::duration(d),
+            Expression::Offset(offset) => Self::Offset(offset),
+            _ => Self::None,
+        }
+    }
+}
+
 pub trait ToFormattedString {
     fn to_fmt_string(&self) -> String;
 }
 
 impl ToFormattedString for Duration {
     fn to_fmt_string(&self) -> String {
+        if *self == Duration::seconds(0) {
+            return "0s".to_string();
+        }
         let (abs, sign) = if self.num_milliseconds() < 0 {
             (-*self, "-")
         } else {
@@ -162,19 +132,7 @@ impl Component for Container {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::InputValue(input) => {
-                let mut records = vec![];
-                let mut offset = FixedOffset::east(0);
-                let split = input.split('\n');
-                let now = now();
-                for s in split {
-                    let record = parse(s, offset, now, &records);
-                    offset = match record {
-                        Record::Offset(offset) => offset,
-                        _ => offset,
-                    };
-                    records.push(record);
-                }
-                self.records = records;
+                self.records = parse(input, now());
                 true
             }
         }
@@ -250,4 +208,11 @@ impl Component for Container {
 
 fn main() {
     yew::start_app::<Container>();
+}
+
+#[test]
+fn test() {
+    let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
+    let records = parse(input, 1);
+    assert_eq!(records.len(), 3)
 }

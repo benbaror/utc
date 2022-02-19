@@ -1,10 +1,72 @@
 extern crate peg;
 use chrono::{Duration, FixedOffset, LocalResult, TimeZone};
 use peg::parser;
+use regex::Regex;
 use std::ops::{Add, Sub};
 
-#[derive(Clone, PartialEq, Debug)]
+fn get_time_zone(input: &str) -> Option<FixedOffset> {
+    let re = Regex::new(r"^#UTC([+-])(\d{1,2})$").unwrap();
+    match re.captures(input.trim()) {
+        Some(x) => {
+            if x.len() != 3 {
+                return None;
+            }
+            let sign = &x[1];
+            let value = match (&x[2]).parse::<i32>().unwrap_or(-25) {
+                x @ -23..=23 => Some(x * 3600),
+                _ => None,
+            };
+            match (sign, value) {
+                ("+", Some(value)) => FixedOffset::east_opt(value),
+                ("-", Some(value)) => FixedOffset::east_opt(-value),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+pub fn parse(input: String, now: i64) -> Vec<Record> {
+    let mut records = vec![];
+    let mut offset = FixedOffset::east(0);
+    let split = input.split('\n');
+    for line in split {
+        let expression = parse_line(line, offset, now, &records);
+        records.push(Record { offset, expression });
+        offset = match expression {
+            Expression::Offset(offset) => offset,
+            _ => offset,
+        };
+    }
+    records
+}
+
+fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Expression {
+    let expressions: Vec<Expression> = records.iter().map(|record| record.into()).collect();
+    let state = State::new(offset, now, &expressions);
+    match arithmetic::expression(input, &state) {
+        Ok(result) => result,
+        _ => match get_time_zone(input) {
+            Some(offset) => Expression::Offset(offset),
+            _ => Expression::None,
+        },
+    }
+}
+
+impl From<&Record> for Expression {
+    fn from(record: &Record) -> Self {
+        record.expression
+    }
+}
+
+pub struct Record {
+    pub offset: FixedOffset,
+    pub expression: Expression,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Expression {
+    Offset(FixedOffset),
     Duration(Duration),
     Timestamp(i64),
     None,
@@ -52,13 +114,13 @@ impl Sub<Expression> for Expression {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct State<'a> {
-    offset: i32,
+    offset: FixedOffset,
     now: i64,
     records: &'a [Expression],
 }
 
 impl<'a> State<'a> {
-    pub fn new(offset: i32, now: i64, records: &'a [Expression]) -> Self {
+    pub fn new(offset: FixedOffset, now: i64, records: &'a [Expression]) -> Self {
         Self {
             offset,
             now,
@@ -84,10 +146,10 @@ parser!(
     rule _ = quiet!{[' ']*}
     rule end() = !['a'..='z' | 'A'..='Z']
 
-    rule record() -> Expression = "#" + r:$(['0'..='9']+) {
-        let record: usize = r.parse().unwrap();
-        match state.records.get(record - 1) {
-            Some(v) => v.clone(),
+    rule record() -> Expression = "#" + idx:$(['0'..='9']+) {
+        let record_index: usize = idx.parse().unwrap();
+        match state.records.get(record_index - 1) {
+            Some(v) => *v,
             _ => Expression::None
         }
     }
@@ -127,6 +189,9 @@ parser!(
     rule number() -> f64
         = n:$(['0'..='9']+(r"."(['0'..='9']+)?)?) { n.parse().unwrap() }
 
+    pub rule bad_number() -> f64
+        = n:$("a"['0'..='9']+(r"."(['0'..='9']+)?)?) { n.parse().unwrap() }
+
     rule n_digit_number(n: usize) -> u32
         = s:$(['0'..='9']*<{n}>) { s.parse().unwrap() }
 
@@ -149,7 +214,7 @@ parser!(
     rule datetime_fmt(sep_ymd: &str, sep: &str) -> Expression
         = "'" ymd:ydm_fmt(sep_ymd)##parse_string_literal(sep) + hms:hms_fmt() "'"
         {
-            let tz = FixedOffset::east(state.offset * 3600);
+            let tz = state.offset;
             let (year, month, day) = ymd;
             let (hour, minute, second) = hms;
             let datetime = TimeZone::ymd_opt(&tz, year, month, day).map(|s| s.and_hms_opt(hour, minute, second));
@@ -168,7 +233,7 @@ parser!(
 #[test]
 fn durations() {
     let records = vec![];
-    let state = State::new(0, 0, &records);
+    let state = State::new(FixedOffset::east(0), 0, &records);
     assert_eq!(
         arithmetic::expression("30s + 5m + 4h", &state),
         Ok(Expression::Duration(Duration::seconds(
@@ -237,7 +302,7 @@ fn durations() {
 #[test]
 fn timestamps() {
     let records = vec![];
-    let state = State::new(5, 0, &records);
+    let state = State::new(FixedOffset::east(5 * 3600), 0, &records);
     let tz = FixedOffset::east(5 * 3600);
     let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(10, 8, 7);
     assert_eq!(
@@ -320,7 +385,7 @@ fn timestamps() {
 #[test]
 fn timestamps_to_durations() {
     let records = vec![];
-    let state = State::new(0, 0, &records);
+    let state = State::new(FixedOffset::east(0), 0, &records);
     assert_eq!(
         arithmetic::expression("100 - 70", &state),
         Ok(Expression::Duration(Duration::seconds(30)))
@@ -363,19 +428,25 @@ fn timestamps_to_durations() {
 #[test]
 fn datetime_to_durations() {
     let records = vec![];
-    let state = State::new(1, 0, &records);
     let tz = FixedOffset::east(3600);
+    let state = State::new(tz, 0, &records);
     let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(20, 8, 7);
     assert_eq!(
         arithmetic::expression("'2014-05-06 20:08:07'", &state),
         Ok(Expression::Timestamp(d.timestamp())),
     );
     assert_eq!(
-        arithmetic::expression("'2014/05/06 18:08:07'", &State::new(-1, 0, &records)),
+        arithmetic::expression(
+            "'2014/05/06 18:08:07'",
+            &State::new(FixedOffset::east(-3600), 0, &records)
+        ),
         Ok(Expression::Timestamp(d.timestamp())),
     );
     assert_eq!(
-        arithmetic::expression("'2014-05-06T21:08:07'", &State::new(2, 0, &records)),
+        arithmetic::expression(
+            "'2014-05-06T21:08:07'",
+            &State::new(FixedOffset::east(2 * 3600), 0, &records)
+        ),
         Ok(Expression::Timestamp(d.timestamp())),
     );
     assert_eq!(
@@ -409,7 +480,7 @@ fn datetime_to_durations() {
 #[test]
 fn now() {
     let records = vec![];
-    let state = &State::new(1, 1, &records);
+    let state = &State::new(FixedOffset::east(3600), 1, &records);
     assert_eq!(
         arithmetic::expression("now", &state),
         Ok(Expression::Timestamp(1))
@@ -423,7 +494,7 @@ fn now() {
         Ok(Expression::Duration(Duration::seconds(2)))
     );
 
-    let state = &State::new(1, 10, &records);
+    let state = &State::new(FixedOffset::east(3600), 10, &records);
     assert_eq!(
         arithmetic::expression("now - 1", &state),
         Ok(Expression::Duration(Duration::seconds(9)))
@@ -433,7 +504,7 @@ fn now() {
 #[test]
 fn parsing_errors() {
     let records = vec![];
-    let state = &State::new(1, 10, &records);
+    let state = State::new(FixedOffset::east(3600), 10, &records);
     assert!(arithmetic::expression("3-", &state).is_err());
     assert_eq!(
         arithmetic::expression("'2014-25-06 10:08:07'", &state),
@@ -451,4 +522,14 @@ fn parsing_errors() {
         arithmetic::expression("'2014-12-06 00:80:00'", &state),
         Ok(Expression::None)
     );
+}
+
+#[test]
+fn test() {
+    let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
+    let records = parse(input, 1);
+    assert_eq!(records.len(), 3);
+    assert_eq!(records[0].offset, FixedOffset::east(0));
+    assert_eq!(records[1].offset, FixedOffset::east(3600));
+    assert_eq!(records[2].offset, FixedOffset::east(3600));
 }
