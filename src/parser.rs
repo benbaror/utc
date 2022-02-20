@@ -230,306 +230,311 @@ parser!(
         / d:datetime_fmt("/", " ") {d}
 });
 
-#[test]
-fn durations() {
-    let records = vec![];
-    let state = State::new(FixedOffset::east(0), 0, &records);
-    assert_eq!(
-        arithmetic::expression("30s + 5m + 4h", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            30 + 5 * 60 + 4 * 60 * 60
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("30s - 5m + 4h", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            30 - 5 * 60 + 4 * 60 * 60
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("6s + 10m + 4h", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            2 * (3 + 5 * 60) + 4 * 60 * 60
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("6.0s + 10.0m + 1.5h", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            2 * (3 + 5 * 60) + 90 * 60
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("0.1s", &state),
-        Ok(Expression::Duration(Duration::milliseconds(100)))
-    );
-    assert_eq!(
-        arithmetic::expression("5s - 2h", &state),
-        Ok(Expression::Duration(Duration::seconds(5 - 2 * 60 * 60)))
-    );
-    assert_eq!(
-        arithmetic::expression("4h5m30s", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            30 + 5 * 60 + 4 * 60 * 60
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("4h5m + 2s", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            5 * 60 + 4 * 60 * 60 + 2
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("4h30s", &state),
-        Ok(Expression::Duration(Duration::seconds(30 + 4 * 60 * 60)))
-    );
-    assert_eq!(
-        arithmetic::expression("5m30s", &state),
-        Ok(Expression::Duration(Duration::seconds(30 + 5 * 60)))
-    );
-    assert_eq!(
-        arithmetic::expression("4h5m30s + 2s", &state),
-        Ok(Expression::Duration(Duration::seconds(
-            30 + 5 * 60 + 4 * 60 * 60 + 2
-        )))
-    );
-    assert_eq!(
-        arithmetic::expression("4h2s5ms", &state),
-        Ok(Expression::Duration(
-            Duration::seconds(4 * 60 * 60 + 2) + Duration::milliseconds(5)
-        ))
-    );
-}
-#[test]
-fn timestamps() {
-    let records = vec![];
-    let state = State::new(FixedOffset::east(5 * 3600), 0, &records);
-    let tz = FixedOffset::east(5 * 3600);
-    let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(10, 8, 7);
-    assert_eq!(
-        arithmetic::expression("0", &state),
-        Ok(Expression::Timestamp(0))
-    );
-    assert_eq!(
-        arithmetic::expression("1006", &state),
-        Ok(Expression::Timestamp(1006))
-    );
-    assert_eq!(
-        arithmetic::expression("1006.0", &state),
-        Ok(Expression::Timestamp(1006))
-    );
-    assert_eq!(
-        arithmetic::expression("1006.1", &state),
-        Ok(Expression::Timestamp(1006))
-    );
-    assert_eq!(
-        arithmetic::expression("-1006", &state),
-        Ok(Expression::Timestamp(-1006))
-    );
-    assert_eq!(
-        arithmetic::expression("-1006.0", &state),
-        Ok(Expression::Timestamp(-1006))
-    );
-    assert_eq!(
-        arithmetic::expression("3 + 2h", &state),
-        Ok(Expression::Timestamp(3 + 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("( 3 + 2h )", &state),
-        Ok(Expression::Timestamp(3 + 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("(3 + 2h)", &state),
-        Ok(Expression::Timestamp(3 + 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("3 -2h", &state),
-        Ok(Expression::Timestamp(3 - 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("3-2h", &state),
-        Ok(Expression::Timestamp(3 - 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("3- 2h", &state),
-        Ok(Expression::Timestamp(3 - 2 * 60 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("3- 2h + 5m", &state),
-        Ok(Expression::Timestamp(3 - 2 * 60 * 60 + 5 * 60))
-    );
-    assert_eq!(
-        arithmetic::expression("1 + 2", &state),
-        Ok(Expression::Duration(Duration::seconds(3)))
-    );
-    assert_eq!(
-        arithmetic::expression("1s + 2", &state),
-        Ok(Expression::Timestamp(3))
-    );
-    assert_eq!(
-        arithmetic::expression("1s - 2", &state),
-        Ok(Expression::Timestamp(-1))
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 10:08:07' + '2014-05-06 10:08:07'", &state),
-        Ok(Expression::Duration(Duration::seconds(d.timestamp() * 2)))
-    );
-    assert_eq!(
-        arithmetic::expression("'2014/05/06 10:08:07' + 2", &state),
-        Ok(Expression::Duration(Duration::seconds(d.timestamp() + 2)))
-    );
-    assert_eq!(
-        arithmetic::expression("2 + (100 - 500)", &state),
-        Ok(Expression::Timestamp(2 - 400))
-    );
-}
-#[test]
-fn timestamps_to_durations() {
-    let records = vec![];
-    let state = State::new(FixedOffset::east(0), 0, &records);
-    assert_eq!(
-        arithmetic::expression("100 - 70", &state),
-        Ok(Expression::Duration(Duration::seconds(30)))
-    );
-    assert_eq!(
-        arithmetic::expression("100- 70", &state),
-        Ok(Expression::Duration(Duration::seconds(30)))
-    );
-    assert_eq!(
-        arithmetic::expression("100-70", &state),
-        Ok(Expression::Duration(Duration::seconds(30)))
-    );
-    assert_eq!(
-        arithmetic::expression("5 - 3 + 2h", &state),
-        Ok(Expression::Duration(
-            Duration::hours(2) + Duration::seconds(2)
-        ))
-    );
-    assert_eq!(
-        arithmetic::expression("(100 - 100) + 2h", &state),
-        Ok(Expression::Duration(Duration::hours(2)))
-    );
-    assert_eq!(
-        arithmetic::expression("2h + (100 - 100)", &state),
-        Ok(Expression::Duration(Duration::hours(2)))
-    );
-    assert_eq!(
-        arithmetic::expression("2h - (100 - 100)", &state),
-        Ok(Expression::Duration(Duration::hours(2)))
-    );
-    assert_eq!(
-        arithmetic::expression("2h - 100 + 100", &state),
-        Ok(Expression::Duration(Duration::hours(2)))
-    );
-    assert_eq!(
-        arithmetic::expression("(100 - 1s) - (100 + 1s)", &state),
-        Ok(Expression::Duration(Duration::seconds(-2)))
-    );
-}
-#[test]
-fn datetime_to_durations() {
-    let records = vec![];
-    let tz = FixedOffset::east(3600);
-    let state = State::new(tz, 0, &records);
-    let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(20, 8, 7);
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 20:08:07'", &state),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression(
-            "'2014/05/06 18:08:07'",
-            &State::new(FixedOffset::east(-3600), 0, &records)
-        ),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression(
-            "'2014-05-06T21:08:07'",
-            &State::new(FixedOffset::east(2 * 3600), 0, &records)
-        ),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 20:08:05' + 2.0s", &state),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 22:08:07' - 2h", &state),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 20:10:07' - 2.0m", &state),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 20:08:09' - '2014-05-06 10:08:09' + 2h", &state),
-        Ok(Expression::Duration(Duration::hours(12)))
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-05-06 20:08:09' - '2014-05-06 10:08:09' + 2h", &state),
-        Ok(Expression::Duration(Duration::hours(12)))
-    );
-    assert_eq!(
-        arithmetic::expression(
-            "'2014-05-06 10:08:07' + ('2013-05-06T20:08:09' - '2013-05-06 10:08:09')",
-            &state
-        ),
-        Ok(Expression::Timestamp(d.timestamp())),
-    );
-}
-#[test]
-fn now() {
-    let records = vec![];
-    let state = &State::new(FixedOffset::east(3600), 1, &records);
-    assert_eq!(
-        arithmetic::expression("now", &state),
-        Ok(Expression::Timestamp(1))
-    );
-    assert_eq!(
-        arithmetic::expression("now + 1m2s", &state),
-        Ok(Expression::Timestamp(63))
-    );
-    assert_eq!(
-        arithmetic::expression("now + 1", &state),
-        Ok(Expression::Duration(Duration::seconds(2)))
-    );
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn durations() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east(0), 0, &records);
+        assert_eq!(
+            arithmetic::expression("30s + 5m + 4h", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                30 + 5 * 60 + 4 * 60 * 60
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("30s - 5m + 4h", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                30 - 5 * 60 + 4 * 60 * 60
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("6s + 10m + 4h", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                2 * (3 + 5 * 60) + 4 * 60 * 60
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("6.0s + 10.0m + 1.5h", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                2 * (3 + 5 * 60) + 90 * 60
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("0.1s", &state),
+            Ok(Expression::Duration(Duration::milliseconds(100)))
+        );
+        assert_eq!(
+            arithmetic::expression("5s - 2h", &state),
+            Ok(Expression::Duration(Duration::seconds(5 - 2 * 60 * 60)))
+        );
+        assert_eq!(
+            arithmetic::expression("4h5m30s", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                30 + 5 * 60 + 4 * 60 * 60
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("4h5m + 2s", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                5 * 60 + 4 * 60 * 60 + 2
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("4h30s", &state),
+            Ok(Expression::Duration(Duration::seconds(30 + 4 * 60 * 60)))
+        );
+        assert_eq!(
+            arithmetic::expression("5m30s", &state),
+            Ok(Expression::Duration(Duration::seconds(30 + 5 * 60)))
+        );
+        assert_eq!(
+            arithmetic::expression("4h5m30s + 2s", &state),
+            Ok(Expression::Duration(Duration::seconds(
+                30 + 5 * 60 + 4 * 60 * 60 + 2
+            )))
+        );
+        assert_eq!(
+            arithmetic::expression("4h2s5ms", &state),
+            Ok(Expression::Duration(
+                Duration::seconds(4 * 60 * 60 + 2) + Duration::milliseconds(5)
+            ))
+        );
+    }
 
-    let state = &State::new(FixedOffset::east(3600), 10, &records);
-    assert_eq!(
-        arithmetic::expression("now - 1", &state),
-        Ok(Expression::Duration(Duration::seconds(9)))
-    );
-}
+    #[test]
+    fn timestamps() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east(5 * 3600), 0, &records);
+        let tz = FixedOffset::east(5 * 3600);
+        let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(10, 8, 7);
+        assert_eq!(
+            arithmetic::expression("0", &state),
+            Ok(Expression::Timestamp(0))
+        );
+        assert_eq!(
+            arithmetic::expression("1006", &state),
+            Ok(Expression::Timestamp(1006))
+        );
+        assert_eq!(
+            arithmetic::expression("1006.0", &state),
+            Ok(Expression::Timestamp(1006))
+        );
+        assert_eq!(
+            arithmetic::expression("1006.1", &state),
+            Ok(Expression::Timestamp(1006))
+        );
+        assert_eq!(
+            arithmetic::expression("-1006", &state),
+            Ok(Expression::Timestamp(-1006))
+        );
+        assert_eq!(
+            arithmetic::expression("-1006.0", &state),
+            Ok(Expression::Timestamp(-1006))
+        );
+        assert_eq!(
+            arithmetic::expression("3 + 2h", &state),
+            Ok(Expression::Timestamp(3 + 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("( 3 + 2h )", &state),
+            Ok(Expression::Timestamp(3 + 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("(3 + 2h)", &state),
+            Ok(Expression::Timestamp(3 + 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("3 -2h", &state),
+            Ok(Expression::Timestamp(3 - 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("3-2h", &state),
+            Ok(Expression::Timestamp(3 - 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("3- 2h", &state),
+            Ok(Expression::Timestamp(3 - 2 * 60 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("3- 2h + 5m", &state),
+            Ok(Expression::Timestamp(3 - 2 * 60 * 60 + 5 * 60))
+        );
+        assert_eq!(
+            arithmetic::expression("1 + 2", &state),
+            Ok(Expression::Duration(Duration::seconds(3)))
+        );
+        assert_eq!(
+            arithmetic::expression("1s + 2", &state),
+            Ok(Expression::Timestamp(3))
+        );
+        assert_eq!(
+            arithmetic::expression("1s - 2", &state),
+            Ok(Expression::Timestamp(-1))
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07' + '2014-05-06 10:08:07'", &state),
+            Ok(Expression::Duration(Duration::seconds(d.timestamp() * 2)))
+        );
+        assert_eq!(
+            arithmetic::expression("'2014/05/06 10:08:07' + 2", &state),
+            Ok(Expression::Duration(Duration::seconds(d.timestamp() + 2)))
+        );
+        assert_eq!(
+            arithmetic::expression("2 + (100 - 500)", &state),
+            Ok(Expression::Timestamp(2 - 400))
+        );
+    }
+    #[test]
+    fn timestamps_to_durations() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east(0), 0, &records);
+        assert_eq!(
+            arithmetic::expression("100 - 70", &state),
+            Ok(Expression::Duration(Duration::seconds(30)))
+        );
+        assert_eq!(
+            arithmetic::expression("100- 70", &state),
+            Ok(Expression::Duration(Duration::seconds(30)))
+        );
+        assert_eq!(
+            arithmetic::expression("100-70", &state),
+            Ok(Expression::Duration(Duration::seconds(30)))
+        );
+        assert_eq!(
+            arithmetic::expression("5 - 3 + 2h", &state),
+            Ok(Expression::Duration(
+                Duration::hours(2) + Duration::seconds(2)
+            ))
+        );
+        assert_eq!(
+            arithmetic::expression("(100 - 100) + 2h", &state),
+            Ok(Expression::Duration(Duration::hours(2)))
+        );
+        assert_eq!(
+            arithmetic::expression("2h + (100 - 100)", &state),
+            Ok(Expression::Duration(Duration::hours(2)))
+        );
+        assert_eq!(
+            arithmetic::expression("2h - (100 - 100)", &state),
+            Ok(Expression::Duration(Duration::hours(2)))
+        );
+        assert_eq!(
+            arithmetic::expression("2h - 100 + 100", &state),
+            Ok(Expression::Duration(Duration::hours(2)))
+        );
+        assert_eq!(
+            arithmetic::expression("(100 - 1s) - (100 + 1s)", &state),
+            Ok(Expression::Duration(Duration::seconds(-2)))
+        );
+    }
+    #[test]
+    fn datetime_to_durations() {
+        let records = vec![];
+        let tz = FixedOffset::east(3600);
+        let state = State::new(tz, 0, &records);
+        let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(20, 8, 7);
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 20:08:07'", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression(
+                "'2014/05/06 18:08:07'",
+                &State::new(FixedOffset::east(-3600), 0, &records)
+            ),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression(
+                "'2014-05-06T21:08:07'",
+                &State::new(FixedOffset::east(2 * 3600), 0, &records)
+            ),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 20:08:05' + 2.0s", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 22:08:07' - 2h", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 20:10:07' - 2.0m", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 20:08:09' - '2014-05-06 10:08:09' + 2h", &state),
+            Ok(Expression::Duration(Duration::hours(12)))
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 20:08:09' - '2014-05-06 10:08:09' + 2h", &state),
+            Ok(Expression::Duration(Duration::hours(12)))
+        );
+        assert_eq!(
+            arithmetic::expression(
+                "'2014-05-06 10:08:07' + ('2013-05-06T20:08:09' - '2013-05-06 10:08:09')",
+                &state
+            ),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+    }
+    #[test]
+    fn now() {
+        let records = vec![];
+        let state = &State::new(FixedOffset::east(3600), 1, &records);
+        assert_eq!(
+            arithmetic::expression("now", &state),
+            Ok(Expression::Timestamp(1))
+        );
+        assert_eq!(
+            arithmetic::expression("now + 1m2s", &state),
+            Ok(Expression::Timestamp(63))
+        );
+        assert_eq!(
+            arithmetic::expression("now + 1", &state),
+            Ok(Expression::Duration(Duration::seconds(2)))
+        );
 
-#[test]
-fn parsing_errors() {
-    let records = vec![];
-    let state = State::new(FixedOffset::east(3600), 10, &records);
-    assert!(arithmetic::expression("3-", &state).is_err());
-    assert_eq!(
-        arithmetic::expression("'2014-25-06 10:08:07'", &state),
-        Ok(Expression::None)
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-12-06 50:08:07'", &state),
-        Ok(Expression::None)
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-12-06 00:08:70'", &state),
-        Ok(Expression::None)
-    );
-    assert_eq!(
-        arithmetic::expression("'2014-12-06 00:80:00'", &state),
-        Ok(Expression::None)
-    );
-}
+        let state = &State::new(FixedOffset::east(3600), 10, &records);
+        assert_eq!(
+            arithmetic::expression("now - 1", &state),
+            Ok(Expression::Duration(Duration::seconds(9)))
+        );
+    }
 
-#[test]
-fn test() {
-    let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
-    let records = parse(input, 1);
-    assert_eq!(records.len(), 3);
-    assert_eq!(records[0].offset, FixedOffset::east(0));
-    assert_eq!(records[1].offset, FixedOffset::east(3600));
-    assert_eq!(records[2].offset, FixedOffset::east(3600));
+    #[test]
+    fn parsing_errors() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east(3600), 10, &records);
+        assert!(arithmetic::expression("3-", &state).is_err());
+        assert_eq!(
+            arithmetic::expression("'2014-25-06 10:08:07'", &state),
+            Ok(Expression::None)
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-12-06 50:08:07'", &state),
+            Ok(Expression::None)
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-12-06 00:08:70'", &state),
+            Ok(Expression::None)
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-12-06 00:80:00'", &state),
+            Ok(Expression::None)
+        );
+    }
+
+    #[test]
+    fn test() {
+        let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
+        let records = parse(input, 1);
+        assert_eq!(records.len(), 3);
+        assert_eq!(records[0].offset, FixedOffset::east(0));
+        assert_eq!(records[1].offset, FixedOffset::east(3600));
+        assert_eq!(records[2].offset, FixedOffset::east(3600));
+    }
 }

@@ -210,9 +210,13 @@ fn main() {
     yew::start_app::<Container>();
 }
 
-#[test]
-fn test() {
-    let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
-    let records = parse(input, 1);
-    assert_eq!(records.len(), 3)
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test() {
+        let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
+        let records = parse(input, 1);
+        assert_eq!(records.len(), 3)
+    }
 }
