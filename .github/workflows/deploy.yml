@@ -1,0 +1,30 @@
+name: Deploy to Github pages
+
+on: [workflow_dispatch]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Install trunk
+        run: cargo install trunk wasm-bindgen-cli
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build
+        run: trunk build --release --public-url=utc
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
