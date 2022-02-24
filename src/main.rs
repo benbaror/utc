@@ -176,6 +176,7 @@ impl Component for Container {
                                 style="resize: none"
                                 data-gramm="false"
                                 placeholder=""
+                                wrap = "off"
                                 >
                                 </textarea>
                             </div>

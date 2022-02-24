@@ -72,6 +72,27 @@ pub enum Expression {
     None,
 }
 
+impl Expression {
+    fn timestamp(timestamp: Option<i64>) -> Self {
+        match timestamp {
+            Some(timestamp) => Self::Timestamp(timestamp),
+            _ => Self::None,
+        }
+    }
+    fn seconds(seconds: Option<i64>) -> Self {
+        match seconds {
+            Some(seconds) => Self::milliseconds(seconds.checked_mul(1000)),
+            _ => Self::None,
+        }
+    }
+    fn milliseconds(milliseconds: Option<i64>) -> Self {
+        match milliseconds {
+            Some(milliseconds) => Self::Duration(Duration::milliseconds(milliseconds)),
+            _ => Self::None,
+        }
+    }
+}
+
 impl Add<Expression> for Expression {
     type Output = Expression;
 
@@ -79,13 +100,13 @@ impl Add<Expression> for Expression {
         match (self, rhs) {
             (Expression::Duration(l), Expression::Duration(r)) => Expression::Duration(l + r),
             (Expression::Duration(l), Expression::Timestamp(r)) => {
-                Expression::Timestamp(l.num_seconds() + r)
+                Expression::timestamp(r.checked_add(l.num_seconds()))
             }
             (Expression::Timestamp(l), Expression::Duration(r)) => {
-                Expression::Timestamp(l + r.num_seconds())
+                Expression::timestamp(l.checked_add(r.num_seconds()))
             }
             (Expression::Timestamp(l), Expression::Timestamp(r)) => {
-                Expression::Duration(Duration::seconds(l + r))
+                Expression::seconds(l.checked_add(r))
             }
             _ => Expression::None,
         }
@@ -99,13 +120,13 @@ impl Sub<Expression> for Expression {
         match (self, rhs) {
             (Expression::Duration(l), Expression::Duration(r)) => Expression::Duration(l - r),
             (Expression::Duration(l), Expression::Timestamp(r)) => {
-                Expression::Timestamp(l.num_seconds() - r)
+                Expression::timestamp(l.num_seconds().checked_sub(r))
             }
             (Expression::Timestamp(l), Expression::Duration(r)) => {
-                Expression::Timestamp(l - r.num_seconds())
+                Expression::timestamp(l.checked_sub(r.num_seconds()))
             }
             (Expression::Timestamp(l), Expression::Timestamp(r)) => {
-                Expression::Duration(Duration::seconds(l - r))
+                Expression::seconds(l.checked_sub(r))
             }
             _ => Expression::None,
         }
@@ -529,12 +550,31 @@ mod test {
     }
 
     #[test]
-    fn test() {
+    fn test_offset() {
         let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
         let records = parse(input, 1);
         assert_eq!(records.len(), 3);
         assert_eq!(records[0].offset, FixedOffset::east(0));
         assert_eq!(records[1].offset, FixedOffset::east(3600));
         assert_eq!(records[2].offset, FixedOffset::east(3600));
+    }
+
+    #[test]
+    fn test_overflow() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east(3600), 10, &records);
+        assert!(arithmetic::expression("3-", &state).is_err());
+        assert_eq!(
+            arithmetic::expression("4324234034234234234039442343", &state),
+            Ok(Expression::Timestamp(i64::MAX))
+        );
+        assert_eq!(
+            arithmetic::expression("1 + 4324234034234234234039442343", &state),
+            Ok(Expression::None)
+        );
+        assert_eq!(
+            arithmetic::expression("1 - 4324234034234234234039442343", &state),
+            Ok(Expression::None)
+        );
     }
 }
