@@ -2,7 +2,10 @@ extern crate peg;
 use chrono::{Duration, FixedOffset, LocalResult, TimeZone};
 use peg::parser;
 use regex::Regex;
-use std::ops::{Add, Sub};
+use std::{
+    ops::{Add, Sub},
+    panic,
+};
 
 fn get_time_zone(input: &str) -> Option<FixedOffset> {
     let re = Regex::new(r"^#UTC([+-])(\d{1,2})$").unwrap();
@@ -31,7 +34,7 @@ pub fn parse(input: String, now: i64) -> Vec<Record> {
     let mut offset = FixedOffset::east(0);
     let split = input.split('\n');
     for line in split {
-        let expression = parse_line(line, offset, now, &records);
+        let expression = safe_parse_line(line, offset, now, &records);
         records.push(Record { offset, expression });
         offset = match expression {
             Expression::Offset(offset) => offset,
@@ -50,6 +53,14 @@ fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) ->
             Some(offset) => Expression::Offset(offset),
             _ => Expression::None,
         },
+    }
+}
+
+fn safe_parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Expression {
+    let result = panic::catch_unwind(|| parse_line(input, offset, now, records));
+    match result {
+        Ok(result) => result,
+        _ => Expression::None,
     }
 }
 
