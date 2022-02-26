@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_fe24cc84f79623778f86b353f8f4f88d4bbc1f2a(Module, $0, $1) { $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return($1).fullscreenElement;})()); }
+export function __cargo_web_snippet_897ff2d0160606ea98961935acb125d1ddbf4688(Module, $0) { var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "SecurityError"); }

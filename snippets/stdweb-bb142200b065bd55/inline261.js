@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_7acc5a611b1dfdb40f09c005d173515f6f286581(Module, $0) { var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "NotSupportedError"); }
+export function __cargo_web_snippet_848ea1c1240c42ae5105b8df122e9a2d6d288162(Module, $0, $1) { return Module.STDWEB_PRIVATE.acquire_rust_reference( Module.HEAPU16.slice( $0, $1 ) ); }

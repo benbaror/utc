@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_f35557f1d92c363f4c66520e11b39327fb0bf5b0(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof Event && o.type === "change"); }
+export function __cargo_web_snippet_abed77e7cc03d80d1abb28aebafd33de6e8e2031(Module, $0) { Module.STDWEB_PRIVATE.from_js($0, (function(){return new FormData();})()); }

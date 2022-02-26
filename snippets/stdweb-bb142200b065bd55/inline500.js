@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_3334d41cf204e994e826f40a60eb43f04392f0bf(Module, $0, $1, $2) { $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);Module.STDWEB_PRIVATE.from_js($0, (function(){return($1).hasPointerCapture(($2));})()); }
+export function __cargo_web_snippet_26cc9017bc5eea80f587ec5ac1de8e36dc4c5978(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof Event && o.type === "pointerlockchange"); }

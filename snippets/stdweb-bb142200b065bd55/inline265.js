@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_897ff2d0160606ea98961935acb125d1ddbf4688(Module, $0) { var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "SecurityError"); }
+export function __cargo_web_snippet_5803d131898c1bffde3d99348e6489ade3943949(Module, $0, $1) { return Module.STDWEB_PRIVATE.acquire_rust_reference( Module.HEAP16.slice( $0, $1 ) ); }

@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_2034053b7b6771271a2dad3e5416b045a74488a1(Module, $0, $1, $2, $3) { Module.STDWEB_PRIVATE.acquire_js_reference( $0 ).setTimeout( function() {Module.STDWEB_PRIVATE.dyncall( 'vi', $1, [$2] );}, $3 ); }
+export function __cargo_web_snippet_6b4157e45ff68e034c16923b646a3493949f0f7a(Module, $0) { $0 = Module.STDWEB_PRIVATE.to_js($0);($0).clear(); }

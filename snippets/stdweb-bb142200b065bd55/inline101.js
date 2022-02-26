@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_aa107bbaa79bc4339d28f228d0860c54c276b1b0(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof File); }
+export function __cargo_web_snippet_e854289309e564012996fbb70e7c19bf4e6a8866(Module, $0) { var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "NamespaceError"); }

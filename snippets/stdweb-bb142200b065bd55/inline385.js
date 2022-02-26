@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_d34874aef1d1baab55569b93e9039667d4475745(Module, $0, $1) { $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return($1).target;})()); }
+export function __cargo_web_snippet_1f68957291d6bcc401f858540798427c7241da6c(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof UIEvent && o.type === "load"); }

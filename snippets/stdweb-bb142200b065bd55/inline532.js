@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_e20fbb0533ef6a0d0bcf28a4fda0d1f64e6bb56f(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof FocusEvent && o.type === "blur"); }
+export function __cargo_web_snippet_c65e72a0fb4ac9ba2f5741a39aac712e1f39ebf8(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof FileList); }

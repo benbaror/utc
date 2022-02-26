@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_2eaa20ed7f483afd388902a01e2435af2bb6c890(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof Promise); }
+export function __cargo_web_snippet_5ceb98b2e46d98ffb6869e5cadbd87470e745875(Module, $0, $1, $2, $3) { $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);$3 = Module.STDWEB_PRIVATE.to_js($3);($0).pushState(($1),($2),($3)); }

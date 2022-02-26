@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_7c8dfab835dc8a552cd9d67f27d26624590e052c(Module, $0) { var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "SyntaxError"); }
+export function __cargo_web_snippet_bb76a546511e553979d92c40ffbfe27cc3dc984a(Module, $0) { return Module.STDWEB_PRIVATE.acquire_rust_reference( new Int16Array( Module.STDWEB_PRIVATE.acquire_js_reference( $0 ) ) ); }

@@ -1,1 +1,1 @@
-export function __cargo_web_snippet_d83c307a9f5c24db235c8d2610c1ea4e77f3a5c3(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof DOMStringMap); }
+export function __cargo_web_snippet_d857323550eecbf9d9eb04a58697a689cd1c4ba7(Module, $0) { var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof WebSocket); }
