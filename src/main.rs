@@ -41,7 +41,7 @@ pub trait ToFormattedString {
 
 impl ToFormattedString for Duration {
     fn to_fmt_string(&self) -> String {
-        if *self == Duration::seconds(0) {
+        if *self == Self::seconds(0) {
             return "0s".to_string();
         }
         let (abs, sign) = if self.num_milliseconds() < 0 {
@@ -83,15 +83,15 @@ impl Record {
         let naive_date_time = NaiveDateTime::from_timestamp_opt(timestamp, 0);
         match naive_date_time {
             Some(d) => Self::DateTime(DateTime::from_utc(d, offset)),
-            _ => Record::None,
+            _ => Self::None,
         }
     }
 
-    fn duration(duration: Duration) -> Self {
+    const fn duration(duration: Duration) -> Self {
         Self::Duration(duration)
     }
 
-    fn empty() -> Self {
+    const fn empty() -> Self {
         Self::None
     }
 

@@ -85,7 +85,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    fn timestamp(timestamp: Option<i64>) -> Self {
+    const fn timestamp(timestamp: Option<i64>) -> Self {
         match timestamp {
             Some(timestamp) => Self::Timestamp(timestamp),
             _ => Self::None,
@@ -105,42 +105,42 @@ impl Expression {
     }
 }
 
-impl Add<Expression> for Expression {
-    type Output = Expression;
+impl Add<Self> for Expression {
+    type Output = Self;
 
-    fn add(self, rhs: Expression) -> Expression {
+    fn add(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Expression::Duration(l), Expression::Duration(r)) => Expression::Duration(l + r),
-            (Expression::Duration(l), Expression::Timestamp(r)) => {
-                Expression::timestamp(r.checked_add(l.num_seconds()))
+            (Self::Duration(l), Self::Duration(r)) => Self::Duration(l + r),
+            (Self::Duration(l), Self::Timestamp(r)) => {
+                Self::timestamp(r.checked_add(l.num_seconds()))
             }
-            (Expression::Timestamp(l), Expression::Duration(r)) => {
-                Expression::timestamp(l.checked_add(r.num_seconds()))
+            (Self::Timestamp(l), Self::Duration(r)) => {
+                Self::timestamp(l.checked_add(r.num_seconds()))
             }
-            (Expression::Timestamp(l), Expression::Timestamp(r)) => {
-                Expression::seconds(l.checked_add(r))
+            (Self::Timestamp(l), Self::Timestamp(r)) => {
+                Self::seconds(l.checked_add(r))
             }
-            _ => Expression::None,
+            _ => Self::None,
         }
     }
 }
 
-impl Sub<Expression> for Expression {
-    type Output = Expression;
+impl Sub<Self> for Expression {
+    type Output = Self;
 
-    fn sub(self, rhs: Expression) -> Expression {
+    fn sub(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Expression::Duration(l), Expression::Duration(r)) => Expression::Duration(l - r),
-            (Expression::Duration(l), Expression::Timestamp(r)) => {
-                Expression::timestamp(l.num_seconds().checked_sub(r))
+            (Self::Duration(l), Self::Duration(r)) => Self::Duration(l - r),
+            (Self::Duration(l), Self::Timestamp(r)) => {
+                Self::timestamp(l.num_seconds().checked_sub(r))
             }
-            (Expression::Timestamp(l), Expression::Duration(r)) => {
-                Expression::timestamp(l.checked_sub(r.num_seconds()))
+            (Self::Timestamp(l), Self::Duration(r)) => {
+                Self::timestamp(l.checked_sub(r.num_seconds()))
             }
-            (Expression::Timestamp(l), Expression::Timestamp(r)) => {
-                Expression::seconds(l.checked_sub(r))
+            (Self::Timestamp(l), Self::Timestamp(r)) => {
+                Self::seconds(l.checked_sub(r))
             }
-            _ => Expression::None,
+            _ => Self::None,
         }
     }
 }
@@ -153,7 +153,7 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub fn new(offset: FixedOffset, now: i64, records: &'a [Expression]) -> Self {
+    pub const fn new(offset: FixedOffset, now: i64, records: &'a [Expression]) -> Self {
         Self {
             offset,
             now,
