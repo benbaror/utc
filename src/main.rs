@@ -8,7 +8,7 @@ fn now() -> i64 {
     (stdweb::web::Date::now() / 1000.0) as i64
 }
 
-fn parse(input: String, now: i64) -> Vec<Record> {
+fn parse(input: &str, now: i64) -> Vec<Record> {
     let records = parser::parse(input, now);
     records.iter().map(|record| record.into()).collect()
 }
@@ -132,7 +132,7 @@ impl Component for Container {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::InputValue(input) => {
-                self.records = parse(input, now());
+                self.records = parse(&input, now());
                 true
             }
         }
@@ -217,7 +217,7 @@ mod test {
     #[test]
     fn test() {
         let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
-        let records = parse(input, 1);
+        let records = parse(&input, 1);
         assert_eq!(records.len(), 3)
     }
 }

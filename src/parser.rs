@@ -29,7 +29,7 @@ fn get_time_zone(input: &str) -> Option<FixedOffset> {
     }
 }
 
-pub fn parse(input: String, now: i64) -> Vec<Record> {
+pub fn parse(input: &str, now: i64) -> Vec<Record> {
     let mut records = vec![];
     let mut offset = FixedOffset::east(0);
     let split = input.split('\n');
@@ -47,6 +47,7 @@ pub fn parse(input: String, now: i64) -> Vec<Record> {
 fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Expression {
     let expressions: Vec<Expression> = records.iter().map(|record| record.into()).collect();
     let state = State::new(offset, now, &expressions);
+    let input = input.trim().trim_end_matches(&[';', ',', ':']);
     match arithmetic::expression(input, &state) {
         Ok(result) => result,
         _ => match get_time_zone(input) {
@@ -563,7 +564,7 @@ mod test {
     #[test]
     fn test_offset() {
         let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
-        let records = parse(input, 1);
+        let records = parse(&input, 1);
         assert_eq!(records.len(), 3);
         assert_eq!(records[0].offset, FixedOffset::east(0));
         assert_eq!(records[1].offset, FixedOffset::east(3600));
