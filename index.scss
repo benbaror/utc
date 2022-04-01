@@ -37,7 +37,7 @@
 .container {
   padding: 1rem;
   display: grid;
-  grid-template-columns: 1em 15em 25em auto;
+  grid-template-columns: 2em 15em 25em auto;
   margin-left: auto;
   margin-right: auto;
   font-family: monaco, Consolas, "Lucida Console", monospace;
@@ -52,7 +52,7 @@
 
 .line-number {
   color: rgba(23, 179, 23, 0.699);
-  text-align: center;
+  text-align: right;
 }
 
 .input-text {
