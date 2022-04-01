@@ -1,11 +1,10 @@
 extern crate peg;
+use std::ops::{Add, Sub};
+use std::panic;
+
 use chrono::{Duration, FixedOffset, LocalResult, TimeZone};
 use peg::parser;
 use regex::Regex;
-use std::{
-    ops::{Add, Sub},
-    panic,
-};
 
 fn get_time_zone(input: &str) -> Option<FixedOffset> {
     let re = Regex::new(r"^#UTC([+-])(\d{1,2})$").unwrap();
@@ -45,7 +44,7 @@ pub fn parse(input: &str, now: i64) -> Vec<Record> {
 }
 
 fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Expression {
-    let expressions: Vec<Expression> = records.iter().map(|record| record.into()).collect();
+    let expressions: Vec<Expression> = records.iter().map(std::convert::Into::into).collect();
     let state = State::new(offset, now, &expressions);
     let input = input.trim().trim_end_matches(&[';', ',', ':']);
     match arithmetic::expression(input, &state) {
@@ -77,6 +76,7 @@ pub struct Record {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[non_exhaustive]
 pub enum Expression {
     Offset(FixedOffset),
     Duration(Duration),
@@ -117,9 +117,7 @@ impl Add<Self> for Expression {
             (Self::Timestamp(l), Self::Duration(r)) => {
                 Self::timestamp(l.checked_add(r.num_seconds()))
             }
-            (Self::Timestamp(l), Self::Timestamp(r)) => {
-                Self::seconds(l.checked_add(r))
-            }
+            (Self::Timestamp(l), Self::Timestamp(r)) => Self::seconds(l.checked_add(r)),
             _ => Self::None,
         }
     }
@@ -137,9 +135,7 @@ impl Sub<Self> for Expression {
             (Self::Timestamp(l), Self::Duration(r)) => {
                 Self::timestamp(l.checked_sub(r.num_seconds()))
             }
-            (Self::Timestamp(l), Self::Timestamp(r)) => {
-                Self::seconds(l.checked_sub(r))
-            }
+            (Self::Timestamp(l), Self::Timestamp(r)) => Self::seconds(l.checked_sub(r)),
             _ => Self::None,
         }
     }
@@ -517,7 +513,7 @@ mod test {
     #[test]
     fn now() {
         let records = vec![];
-        let state = &State::new(FixedOffset::east(3600), 1, &records);
+        let state = State::new(FixedOffset::east(3600), 1, &records);
         assert_eq!(
             arithmetic::expression("now", &state),
             Ok(Expression::Timestamp(1))
@@ -531,7 +527,7 @@ mod test {
             Ok(Expression::Duration(Duration::seconds(2)))
         );
 
-        let state = &State::new(FixedOffset::east(3600), 10, &records);
+        let state = State::new(FixedOffset::east(3600), 10, &records);
         assert_eq!(
             arithmetic::expression("now - 1", &state),
             Ok(Expression::Duration(Duration::seconds(9)))

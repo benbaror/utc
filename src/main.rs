@@ -10,13 +10,14 @@ fn now() -> i64 {
 
 fn parse(input: &str, now: i64) -> Vec<Record> {
     let records = parser::parse(input, now);
-    records.iter().map(|record| record.into()).collect()
+    records.iter().map(std::convert::Into::into).collect()
 }
 
 enum Msg {
     InputValue(String),
 }
 
+#[non_exhaustive]
 enum Record {
     DateTime(DateTime<FixedOffset>),
     Duration(Duration),
@@ -162,7 +163,7 @@ impl Component for Container {
                         <div class="container">
                             <div class="line-number">
                                 <div> {
-                                    for (1..self.records.len() + 1).map(|i| {
+                                    for (1..=self.records.len()).map(|i| {
                                         html!{
                                             <div>{i}</div>
                                         } })
