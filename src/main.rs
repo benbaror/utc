@@ -152,17 +152,12 @@ impl Display for Container {
 impl Container {
     #[cfg(web_sys_unstable_apis)]
     fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
-        use wasm_bindgen_futures::JsFuture;
-
         let window = web_sys::window().ok_or(ClipboardError::NotAvailable)?;
         let clipboard = window
             .navigator()
             .clipboard()
             .ok_or(ClipboardError::NotAvailable)?;
-        let promise = clipboard.write_text(&self.to_string());
-        wasm_bindgen_futures::spawn_local(async {
-            JsFuture::from(promise).await;
-        });
+        let _ = clipboard.write_text(&self.to_string());
         Ok(())
     }
 
