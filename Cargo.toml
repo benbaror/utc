@@ -7,11 +7,13 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-web-sys = '>=0.3'
+web-sys = { version = "0.3.56", features = ["Clipboard", "Navigator"] }
 yew = '>=0.19.3'
 stdweb = '>=0.4'
 regex = ">=1"
 peg = ">=0.8.0"
+wasm-bindgen-futures = ">=0.4.26"
+thiserror = ">=1.0.0"
 
 [dependencies.chrono]
 version = '>=0.4.19'

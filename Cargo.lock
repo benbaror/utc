@@ -516,6 +516,8 @@ dependencies = [
  "peg",
  "regex",
  "stdweb",
+ "thiserror",
+ "wasm-bindgen-futures",
  "web-sys",
  "yew",
 ]

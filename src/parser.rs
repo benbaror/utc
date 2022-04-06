@@ -43,10 +43,19 @@ pub fn parse(input: &str, now: i64) -> Vec<Record> {
     records
 }
 
+fn remove_json_keys(input: &str) -> String {
+    let re = Regex::new(r#"['"]*\s*[[:alnum:]_\s*]+?\s*\s*['"]:"#).unwrap();
+    re.replace_all(input, "").to_string()
+}
+
 fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) -> Expression {
     let expressions: Vec<Expression> = records.iter().map(std::convert::Into::into).collect();
     let state = State::new(offset, now, &expressions);
-    let input = input.trim().trim_end_matches(&[';', ',', ':']);
+    let input = remove_json_keys(input);
+    let input = input
+        .trim()
+        .trim_start_matches(&['{', ' '])
+        .trim_end_matches(&[';', ',', ':', '}', ' ']);
     match arithmetic::expression(input, &state) {
         Ok(result) => result,
         _ => match get_time_zone(input) {
