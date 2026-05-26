@@ -2,7 +2,7 @@ extern crate peg;
 use std::ops::{Add, Sub};
 use std::panic;
 
-use chrono::{Duration, FixedOffset, LocalResult, TimeZone};
+use chrono::{Duration, FixedOffset, LocalResult, Offset, TimeZone, Utc};
 use peg::parser;
 use regex::Regex;
 
@@ -14,7 +14,7 @@ fn get_time_zone(input: &str) -> Option<FixedOffset> {
                 return None;
             }
             let sign = &x[1];
-            let value = match (&x[2]).parse::<i32>().unwrap_or(-25) {
+            let value = match x[2].parse::<i32>().unwrap_or(-25) {
                 x @ -23..=23 => Some(x * 3600),
                 _ => None,
             };
@@ -30,7 +30,7 @@ fn get_time_zone(input: &str) -> Option<FixedOffset> {
 
 pub fn parse(input: &str, now: i64) -> Vec<Record> {
     let mut records = vec![];
-    let mut offset = FixedOffset::east(0);
+    let mut offset = Utc.fix();
     let split = input.split('\n');
     for line in split {
         let expression = safe_parse_line(line, offset, now, &records);
@@ -54,8 +54,8 @@ fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) ->
     let input = remove_json_keys(input);
     let input = input
         .trim()
-        .trim_start_matches(&['{', ' '])
-        .trim_end_matches(&[';', ',', ':', '}', ' ']);
+        .trim_start_matches(['{', ' '])
+        .trim_end_matches([';', ',', ':', '}', ' ']);
     match arithmetic::expression(input, &state) {
         Ok(result) => result,
         _ => match get_time_zone(input) {
@@ -167,9 +167,17 @@ impl<'a> State<'a> {
     }
 }
 
+fn parse_datetime(tz: FixedOffset, ymd: (i32, u32, u32), hms: (u32, u32, u32)) -> Expression {
+    let (year, month, day) = ymd;
+    let (hour, minute, second) = hms;
+    match tz.with_ymd_and_hms(year, month, day, hour, minute, second) {
+        LocalResult::Single(dt) => Expression::Timestamp(dt.timestamp()),
+        _ => Expression::None,
+    }
+}
+
 parser!(
     pub grammar arithmetic(state: &State) for str {
-    use peg::ParseLiteral;
 
     pub rule expression() -> Expression = precedence!{
         x:(@) _ "+" _ y:@ { x + y }
@@ -233,13 +241,17 @@ parser!(
     rule n_digit_number(n: usize) -> u32
         = s:$(['0'..='9']*<{n}>) { s.parse().unwrap() }
 
-    rule ydm_fmt(sep: &str) -> (i32, u32, u32)
-        = year:n_digit_number(4)##parse_string_literal(sep)
-          + month:n_digit_number(2)##parse_string_literal(sep)
+    rule ydm_fmt_dash() -> (i32, u32, u32)
+        = year:n_digit_number(4) "-"
+          + month:n_digit_number(2) "-"
           + day:n_digit_number(2)
-        {
-            (year as i32, month, day)
-        }
+        { (year as i32, month, day) }
+
+    rule ydm_fmt_slash() -> (i32, u32, u32)
+        = year:n_digit_number(4) "/"
+          + month:n_digit_number(2) "/"
+          + day:n_digit_number(2)
+        { (year as i32, month, day) }
 
     rule hms_fmt() -> (u32, u32, u32)
         = hour:n_digit_number(2)":"
@@ -249,23 +261,10 @@ parser!(
             (hour, minute, second)
         }
 
-    rule datetime_fmt(sep_ymd: &str, sep: &str) -> Expression
-        = "'" ymd:ydm_fmt(sep_ymd)##parse_string_literal(sep) + hms:hms_fmt() "'"
-        {
-            let tz = state.offset;
-            let (year, month, day) = ymd;
-            let (hour, minute, second) = hms;
-            let datetime = TimeZone::ymd_opt(&tz, year, month, day).map(|s| s.and_hms_opt(hour, minute, second));
-            match datetime {
-                LocalResult::Single(Some(datetime)) => Expression::Timestamp(datetime.timestamp()),
-                _ => Expression::None
-            }
-        }
-
     rule datetime() -> Expression
-        = d:datetime_fmt("-", " ") {d}
-        / d:datetime_fmt("-", "T") {d}
-        / d:datetime_fmt("/", " ") {d}
+        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        / "'" ymd:ydm_fmt_dash() "T" + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        / "'" ymd:ydm_fmt_slash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
 });
 
 #[cfg(test)]
@@ -274,7 +273,7 @@ mod test {
     #[test]
     fn durations() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(0), 0, &records);
+        let state = State::new(FixedOffset::east_opt(0).unwrap(), 0, &records);
         assert_eq!(
             arithmetic::expression("30s + 5m + 4h", &state),
             Ok(Expression::Duration(Duration::seconds(
@@ -344,9 +343,9 @@ mod test {
     #[test]
     fn timestamps() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(5 * 3600), 0, &records);
-        let tz = FixedOffset::east(5 * 3600);
-        let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(10, 8, 7);
+        let state = State::new(FixedOffset::east_opt(5 * 3600).unwrap(), 0, &records);
+        let tz = FixedOffset::east_opt(5 * 3600).unwrap();
+        let d = tz.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
         assert_eq!(
             arithmetic::expression("0", &state),
             Ok(Expression::Timestamp(0))
@@ -427,7 +426,7 @@ mod test {
     #[test]
     fn timestamps_to_durations() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(0), 0, &records);
+        let state = State::new(FixedOffset::east_opt(0).unwrap(), 0, &records);
         assert_eq!(
             arithmetic::expression("100 - 70", &state),
             Ok(Expression::Duration(Duration::seconds(30)))
@@ -470,9 +469,9 @@ mod test {
     #[test]
     fn datetime_to_durations() {
         let records = vec![];
-        let tz = FixedOffset::east(3600);
+        let tz = FixedOffset::east_opt(3600).unwrap();
         let state = State::new(tz, 0, &records);
-        let d = chrono::TimeZone::ymd(&tz, 2014, 5, 6).and_hms(20, 8, 7);
+        let d = tz.with_ymd_and_hms(2014, 5, 6, 20, 8, 7).unwrap();
         assert_eq!(
             arithmetic::expression("'2014-05-06 20:08:07'", &state),
             Ok(Expression::Timestamp(d.timestamp())),
@@ -480,14 +479,14 @@ mod test {
         assert_eq!(
             arithmetic::expression(
                 "'2014/05/06 18:08:07'",
-                &State::new(FixedOffset::east(-3600), 0, &records)
+                &State::new(FixedOffset::east_opt(-3600).unwrap(), 0, &records)
             ),
             Ok(Expression::Timestamp(d.timestamp())),
         );
         assert_eq!(
             arithmetic::expression(
                 "'2014-05-06T21:08:07'",
-                &State::new(FixedOffset::east(2 * 3600), 0, &records)
+                &State::new(FixedOffset::east_opt(2 * 3600).unwrap(), 0, &records)
             ),
             Ok(Expression::Timestamp(d.timestamp())),
         );
@@ -522,7 +521,7 @@ mod test {
     #[test]
     fn now() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(3600), 1, &records);
+        let state = State::new(FixedOffset::east_opt(3600).unwrap(), 1, &records);
         assert_eq!(
             arithmetic::expression("now", &state),
             Ok(Expression::Timestamp(1))
@@ -536,7 +535,7 @@ mod test {
             Ok(Expression::Duration(Duration::seconds(2)))
         );
 
-        let state = State::new(FixedOffset::east(3600), 10, &records);
+        let state = State::new(FixedOffset::east_opt(3600).unwrap(), 10, &records);
         assert_eq!(
             arithmetic::expression("now - 1", &state),
             Ok(Expression::Duration(Duration::seconds(9)))
@@ -546,7 +545,7 @@ mod test {
     #[test]
     fn parsing_errors() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(3600), 10, &records);
+        let state = State::new(FixedOffset::east_opt(3600).unwrap(), 10, &records);
         assert!(arithmetic::expression("3-", &state).is_err());
         assert_eq!(
             arithmetic::expression("'2014-25-06 10:08:07'", &state),
@@ -571,15 +570,15 @@ mod test {
         let input: String = "#UTC+1\n12323123\n'1970-05-23 16:05:23'".to_string();
         let records = parse(&input, 1);
         assert_eq!(records.len(), 3);
-        assert_eq!(records[0].offset, FixedOffset::east(0));
-        assert_eq!(records[1].offset, FixedOffset::east(3600));
-        assert_eq!(records[2].offset, FixedOffset::east(3600));
+        assert_eq!(records[0].offset, FixedOffset::east_opt(0).unwrap());
+        assert_eq!(records[1].offset, FixedOffset::east_opt(3600).unwrap());
+        assert_eq!(records[2].offset, FixedOffset::east_opt(3600).unwrap());
     }
 
     #[test]
     fn test_overflow() {
         let records = vec![];
-        let state = State::new(FixedOffset::east(3600), 10, &records);
+        let state = State::new(FixedOffset::east_opt(3600).unwrap(), 10, &records);
         assert!(arithmetic::expression("3-", &state).is_err());
         assert_eq!(
             arithmetic::expression("4324234034234234234039442343", &state),

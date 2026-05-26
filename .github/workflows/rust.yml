@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: --cfg=web_sys_unstable_apis
 
 jobs:
   build:
@@ -18,7 +19,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-#     - name: Build
-#       run: cargo build --verbose --target wasm32-unknown-unknown
+    - name: Add wasm32 target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Install trunk
+      run: cargo install trunk
     - name: Run tests
       run: cargo test --verbose
+    - name: Clippy
+      run: cargo clippy -- -D warnings
+    - name: Build (trunk)
+      run: trunk build
