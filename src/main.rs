@@ -267,7 +267,7 @@ impl Component for Container {
                                 <tr><td>{"now"}</td><td>{"Current time"}</td></tr>
                                 <tr><td>{"2024-01-15 12:00:00"}</td><td>{"Datetime → timestamp"}</td></tr>
                                 <tr><td>{"2024-01-15 12:00:00 +05:00"}</td><td>{"With UTC offset"}</td></tr>
-                                <tr><td>{"2h30m, 1.5d, 90s, 500ms"}</td><td>{"Duration  (d h m s ms)"}</td></tr>
+                                <tr><td>{"2h30m, 1.5d, 90s, 500ms"}</td><td>{"Duration (d h m s ms)"}</td></tr>
                                 <tr><td>{"now - 7d"}</td><td>{"Arithmetic: + and −"}</td></tr>
                                 <tr><td>{"#2 - #1"}</td><td>{"Reference a previous line"}</td></tr>
                                 <tr><td>{"#UTC+5, #UTC-8"}</td><td>{"Set timezone for lines below"}</td></tr>

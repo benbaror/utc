@@ -229,8 +229,8 @@ parser!(
         / ms:milliseconds() {ms}
 
     rule unquoted_datetime() -> Expression
-        = ymd:ydm_fmt_dash() " " + hms:hms_fmt() " " + tz:tz_offset() { parse_datetime(tz, ymd, hms) }
-        / ymd:ydm_fmt_dash() " " + hms:hms_fmt() { parse_datetime(state.offset, ymd, hms) }
+        = ymd:ydm_fmt_dash() " " + hms:hms_fmt() " " + tz:tz_offset() end() { parse_datetime(tz, ymd, hms) }
+        / ymd:ydm_fmt_dash() " " + hms:hms_fmt() end() { parse_datetime(state.offset, ymd, hms) }
 
     rule timestamp() -> Expression
         = ("-")n:number()end() {Expression::Timestamp(-n as i64)}
@@ -269,11 +269,13 @@ parser!(
         }
 
     rule tz_offset() -> FixedOffset
-        = "+" h:n_digit_number(2) ":" m:n_digit_number(2) {
-            FixedOffset::east_opt(h as i32 * 3600 + m as i32 * 60).unwrap_or(Utc.fix())
+        = "+" h:n_digit_number(2) ":" m:n_digit_number(2) {?
+            FixedOffset::east_opt(h as i32 * 3600 + m as i32 * 60)
+                .ok_or("invalid UTC offset")
         }
-        / "-" h:n_digit_number(2) ":" m:n_digit_number(2) {
-            FixedOffset::east_opt(-(h as i32 * 3600 + m as i32 * 60)).unwrap_or(Utc.fix())
+        / "-" h:n_digit_number(2) ":" m:n_digit_number(2) {?
+            FixedOffset::east_opt(-(h as i32 * 3600 + m as i32 * 60))
+                .ok_or("invalid UTC offset")
         }
 
     rule datetime() -> Expression
@@ -562,6 +564,8 @@ mod test {
             arithmetic::expression("'2014-05-06 10:08:07 +05:00'", &state_plus1),
             Ok(Expression::Timestamp(d.timestamp())),
         );
+        // out-of-range offset fails the rule rather than silently falling back to UTC
+        assert!(arithmetic::expression("'2014-05-06 10:08:07 +99:00'", &state).is_err());
     }
 
     #[test]
@@ -592,8 +596,12 @@ mod test {
             arithmetic::expression("2014-05-06 20:08:07 + 1h", &state),
             Ok(Expression::Timestamp(d.timestamp() + 3600)),
         );
+        // unquoted datetime with inline offset + arithmetic
+        assert_eq!(
+            arithmetic::expression("2014-05-06 10:08:07 +05:00 + 1h", &state),
+            Ok(Expression::Timestamp(d5.timestamp() + 3600)),
+        );
         // subtraction of two datetimes gives a duration
-        let d2 = tz.with_ymd_and_hms(2014, 5, 6, 19, 8, 7).unwrap();
         assert_eq!(
             arithmetic::expression("2014-05-06 20:08:07 - 2014-05-06 19:08:07", &state),
             Ok(Expression::Duration(Duration::hours(1))),

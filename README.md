@@ -44,6 +44,7 @@ Before creating a pull request run the sanity checks:
 ```
 cargo fmt
 cargo clippy -- -D warnings
+cargo check
 cargo test
 trunk build
 ```
