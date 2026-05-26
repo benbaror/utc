@@ -256,6 +256,19 @@ impl Component for Container {
                         </div>
 
                     </div>
+                    <details class="help">
+                        <summary>{"Syntax"}</summary>
+                        <table class="help-table">
+                            <tr><td>{"1748000000"}</td><td>{"Unix timestamp → datetime"}</td></tr>
+                            <tr><td>{"now"}</td><td>{"Current time"}</td></tr>
+                            <tr><td>{"'2024-01-15 12:00:00'"}</td><td>{"Datetime literal → timestamp"}</td></tr>
+                            <tr><td>{"'2024-01-15T12:00:00'"}</td><td>{"ISO 8601 format"}</td></tr>
+                            <tr><td>{"2h30m, 1.5d, 90s, 500ms"}</td><td>{"Duration  (d h m s ms)"}</td></tr>
+                            <tr><td>{"now - 7d"}</td><td>{"Arithmetic: + and −"}</td></tr>
+                            <tr><td>{"#2 - #1"}</td><td>{"Reference a previous line"}</td></tr>
+                            <tr><td>{"#UTC+5, #UTC-8"}</td><td>{"Set timezone for lines below"}</td></tr>
+                        </table>
+                    </details>
                 </div>
             </div>
         }

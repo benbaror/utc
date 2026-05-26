@@ -118,3 +118,39 @@ textarea:active {
   border-left: 1px solid rgba(229, 231, 235, 0.1);
   padding-left: 0.5em;
 }
+
+.help {
+  margin-top: 0.75rem;
+  font-family: monaco, Consolas, "Lucida Console", monospace;
+  font-size: 10px;
+  color: rgba(229, 231, 235, 0.5);
+}
+
+.help summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.help summary::before {
+  content: "▶ ";
+}
+
+details[open].help summary::before {
+  content: "▼ ";
+}
+
+.help-table {
+  margin-top: 0.4rem;
+  border-collapse: collapse;
+}
+
+.help-table td {
+  padding: 0.1em 1.5em 0.1em 0;
+  vertical-align: top;
+}
+
+.help-table td:first-child {
+  color: rgba(23, 179, 23, 0.8);
+  white-space: nowrap;
+}
