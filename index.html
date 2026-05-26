@@ -1,15 +1,27 @@
-<!DOCTYPE html><html lang="en"><head>
-    <meta charset="utf-8">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
    <meta data-react-helmet="true" name="docusaurus_locale" content="en">
    <meta data-react-helmet="true" name="docusaurus_tag" content="default">
    <script src="https://kit.fontawesome.com/7f396281ee.js" crossorigin="anonymous"></script>
    <link data-react-helmet="true" rel="icon" href="./img/u.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>Utc - a unix time calculator</title>
-    <link rel="stylesheet" href="/utc/index-cc40c59e5450b040.css">
+    <link rel="stylesheet" href="utc/index-9ef8f5359cdfe205.css" integrity="sha384-NZKhQdhCpLCuvMIw97WBJlU6MdMYLiJUZxOWUEzNLl3zW8nqC9Nd0oRmcNtRyNQ+"/>
+    
+<script type="module">
+import init, * as bindings from 'utc/unix_time_calculator-d220348740e0f5d9.js';
+const wasm = await init({ module_or_path: 'utc/unix_time_calculator-d220348740e0f5d9_bg.wasm' });
 
-<link rel="preload" href="/utc/index-6d4a0086f968babd_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/utc/index-6d4a0086f968babd.js"></head>
-<body>
-<script type="module">import init from '/utc/index-6d4a0086f968babd.js';init('/utc/index-6d4a0086f968babd_bg.wasm');</script></body></html>
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+<link rel="modulepreload" href="utc/unix_time_calculator-d220348740e0f5d9.js" crossorigin="anonymous" integrity="sha384-Zb2vuhCGC4Y16xmsPkjH/iGWFJQwb20j3D+F+rm7DxXciRzi4pLvfQUOSnfklQKZ"><link rel="modulepreload" href="utc/snippets/unix_time_calculator-9f675c496340f1cf/inline0.js" crossorigin="anonymous" integrity="sha384-g6tU8JfuEqL+Ux2nlbxvYL1Eyzyn54J/sknffwhqUR2l9St83DMGYkrfiubER3qs"><link rel="preload" href="utc/unix_time_calculator-d220348740e0f5d9_bg.wasm" crossorigin="anonymous" integrity="sha384-Ci8QQZVKTkpbwsE49Jj+qwar5luVsih97iQRFaM9wp2GtUnoYPoFWFRknlI5DDvS" as="fetch" type="application/wasm"></head>
+<body></body>
+</html>
