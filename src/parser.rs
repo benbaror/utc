@@ -261,8 +261,17 @@ parser!(
             (hour, minute, second)
         }
 
+    rule tz_offset() -> FixedOffset
+        = "+" h:n_digit_number(2) ":" m:n_digit_number(2) {
+            FixedOffset::east_opt(h as i32 * 3600 + m as i32 * 60).unwrap_or(Utc.fix())
+        }
+        / "-" h:n_digit_number(2) ":" m:n_digit_number(2) {
+            FixedOffset::east_opt(-(h as i32 * 3600 + m as i32 * 60)).unwrap_or(Utc.fix())
+        }
+
     rule datetime() -> Expression
-        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() " " + tz:tz_offset() "'" { parse_datetime(tz, ymd, hms) }
+        / "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
         / "'" ymd:ydm_fmt_dash() "T" + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
         / "'" ymd:ydm_fmt_slash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
 });
@@ -518,6 +527,36 @@ mod test {
             Ok(Expression::Timestamp(d.timestamp())),
         );
     }
+    #[test]
+    fn datetime_with_offset() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east_opt(0).unwrap(), 0, &records);
+        let tz = FixedOffset::east_opt(5 * 3600).unwrap();
+        let d = tz.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +05:00'", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        let tz_neg = FixedOffset::east_opt(-5 * 3600 - 1800).unwrap();
+        let d_neg = tz_neg.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 -05:30'", &state),
+            Ok(Expression::Timestamp(d_neg.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +00:00'", &state),
+            Ok(Expression::Timestamp(
+                FixedOffset::east_opt(0).unwrap().with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap().timestamp()
+            )),
+        );
+        // offset in literal overrides the state offset
+        let state_plus1 = State::new(FixedOffset::east_opt(3600).unwrap(), 0, &records);
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +05:00'", &state_plus1),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+    }
+
     #[test]
     fn now() {
         let records = vec![];
