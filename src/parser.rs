@@ -2,7 +2,7 @@ extern crate peg;
 use std::ops::{Add, Sub};
 use std::panic;
 
-use chrono::{Duration, FixedOffset, LocalResult, TimeZone};
+use chrono::{Duration, FixedOffset, LocalResult, Offset, TimeZone, Utc};
 use peg::parser;
 use regex::Regex;
 
@@ -30,7 +30,7 @@ fn get_time_zone(input: &str) -> Option<FixedOffset> {
 
 pub fn parse(input: &str, now: i64) -> Vec<Record> {
     let mut records = vec![];
-    let mut offset = FixedOffset::east_opt(0).unwrap();
+    let mut offset = Utc.fix();
     let split = input.split('\n');
     for line in split {
         let expression = safe_parse_line(line, offset, now, &records);
