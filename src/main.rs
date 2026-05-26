@@ -203,7 +203,7 @@ impl Component for Container {
 
         let copy_to_clipboard = link.callback(|_| Msg::CopyToClipboard);
 
-        return html! {
+        html! {
             <div>
                 <div class="page">
                     <div class="banner">
@@ -261,7 +261,7 @@ impl Component for Container {
                     </div>
                 </div>
             </div>
-        };
+        }
     }
 }
 

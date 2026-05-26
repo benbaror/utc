@@ -14,7 +14,7 @@ fn get_time_zone(input: &str) -> Option<FixedOffset> {
                 return None;
             }
             let sign = &x[1];
-            let value = match (&x[2]).parse::<i32>().unwrap_or(-25) {
+            let value = match x[2].parse::<i32>().unwrap_or(-25) {
                 x @ -23..=23 => Some(x * 3600),
                 _ => None,
             };
@@ -54,8 +54,8 @@ fn parse_line(input: &str, offset: FixedOffset, now: i64, records: &[Record]) ->
     let input = remove_json_keys(input);
     let input = input
         .trim()
-        .trim_start_matches(&['{', ' '])
-        .trim_end_matches(&[';', ',', ':', '}', ' ']);
+        .trim_start_matches(['{', ' '])
+        .trim_end_matches([';', ',', ':', '}', ' ']);
     match arithmetic::expression(input, &state) {
         Ok(result) => result,
         _ => match get_time_zone(input) {
