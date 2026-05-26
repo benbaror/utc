@@ -2,8 +2,6 @@ name: Deploy to Github pages
 
 on: [workflow_dispatch]
 
-env:
-  RUSTFLAGS: --cfg=web_sys_unstable_apis
 
 jobs:
   deploy:

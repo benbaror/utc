@@ -4,7 +4,18 @@ use chrono::{DateTime, Duration, FixedOffset, Utc};
 use parser::Expression;
 use thiserror::Error;
 use web_sys::HtmlInputElement;
+use wasm_bindgen::prelude::*;
 use yew::{html, Component, Context, Html, InputEvent, TargetCast};
+
+#[wasm_bindgen(inline_js = "
+export function write_to_clipboard(text) {
+    if (navigator.clipboard) { navigator.clipboard.writeText(text); return true; }
+    return false;
+}
+")]
+extern "C" {
+    fn write_to_clipboard(text: &str) -> bool;
+}
 mod parser;
 
 fn now() -> i64 {
@@ -149,17 +160,12 @@ impl Display for Container {
 }
 
 impl Container {
-    #[cfg(web_sys_unstable_apis)]
     fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
-        let window = web_sys::window().ok_or(ClipboardError::NotAvailable)?;
-        let clipboard = window.navigator().clipboard();
-        let _ = clipboard.write_text(&self.to_string());
-        Ok(())
-    }
-
-    #[cfg(not(web_sys_unstable_apis))]
-    fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
-        Err(ClipboardError::NotAvailable)
+        if write_to_clipboard(&self.to_string()) {
+            Ok(())
+        } else {
+            Err(ClipboardError::NotAvailable)
+        }
     }
 }
 
