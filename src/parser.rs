@@ -167,9 +167,17 @@ impl<'a> State<'a> {
     }
 }
 
+fn parse_datetime(tz: FixedOffset, ymd: (i32, u32, u32), hms: (u32, u32, u32)) -> Expression {
+    let (year, month, day) = ymd;
+    let (hour, minute, second) = hms;
+    match tz.with_ymd_and_hms(year, month, day, hour, minute, second) {
+        LocalResult::Single(dt) => Expression::Timestamp(dt.timestamp()),
+        _ => Expression::None,
+    }
+}
+
 parser!(
     pub grammar arithmetic(state: &State) for str {
-    use peg::ParseLiteral;
 
     pub rule expression() -> Expression = precedence!{
         x:(@) _ "+" _ y:@ { x + y }
@@ -233,13 +241,17 @@ parser!(
     rule n_digit_number(n: usize) -> u32
         = s:$(['0'..='9']*<{n}>) { s.parse().unwrap() }
 
-    rule ydm_fmt(sep: &str) -> (i32, u32, u32)
-        = year:n_digit_number(4)##parse_string_literal(sep)
-          + month:n_digit_number(2)##parse_string_literal(sep)
+    rule ydm_fmt_dash() -> (i32, u32, u32)
+        = year:n_digit_number(4) "-"
+          + month:n_digit_number(2) "-"
           + day:n_digit_number(2)
-        {
-            (year as i32, month, day)
-        }
+        { (year as i32, month, day) }
+
+    rule ydm_fmt_slash() -> (i32, u32, u32)
+        = year:n_digit_number(4) "/"
+          + month:n_digit_number(2) "/"
+          + day:n_digit_number(2)
+        { (year as i32, month, day) }
 
     rule hms_fmt() -> (u32, u32, u32)
         = hour:n_digit_number(2)":"
@@ -249,23 +261,10 @@ parser!(
             (hour, minute, second)
         }
 
-    rule datetime_fmt(sep_ymd: &str, sep: &str) -> Expression
-        = "'" ymd:ydm_fmt(sep_ymd)##parse_string_literal(sep) + hms:hms_fmt() "'"
-        {
-            let tz = state.offset;
-            let (year, month, day) = ymd;
-            let (hour, minute, second) = hms;
-            let datetime = tz.with_ymd_and_hms(year, month, day, hour, minute, second);
-            match datetime {
-                LocalResult::Single(datetime) => Expression::Timestamp(datetime.timestamp()),
-                _ => Expression::None
-            }
-        }
-
     rule datetime() -> Expression
-        = d:datetime_fmt("-", " ") {d}
-        / d:datetime_fmt("-", "T") {d}
-        / d:datetime_fmt("/", " ") {d}
+        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        / "'" ymd:ydm_fmt_dash() "T" + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        / "'" ymd:ydm_fmt_slash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
 });
 
 #[cfg(test)]
