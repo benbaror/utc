@@ -152,10 +152,7 @@ impl Container {
     #[cfg(web_sys_unstable_apis)]
     fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
         let window = web_sys::window().ok_or(ClipboardError::NotAvailable)?;
-        let clipboard = window
-            .navigator()
-            .clipboard()
-            .ok_or(ClipboardError::NotAvailable)?;
+        let clipboard = window.navigator().clipboard();
         let _ = clipboard.write_text(&self.to_string());
         Ok(())
     }
