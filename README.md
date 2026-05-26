@@ -9,10 +9,10 @@ Each line of input is parsed and displayed as both a human-readable datetime and
 | `1748000000` | Unix timestamp (seconds) → datetime |
 | `-1748000000` | Negative timestamp |
 | `now` | Current time |
-| `'2024-01-15 12:00:00'` | Datetime literal → timestamp |
-| `'2024-01-15T12:00:00'` | ISO 8601 format |
-| `'2024/01/15 12:00:00'` | Slash-separated date |
-| `'2024-01-15 12:00:00 +05:00'` | Datetime with UTC offset (paste from middle panel) |
+| `2024-01-15 12:00:00` | Datetime → timestamp (uses active timezone) |
+| `2024-01-15 12:00:00 +05:00` | Datetime with UTC offset (paste directly from middle panel) |
+| `'2024-01-15T12:00:00'` | ISO 8601 format (quotes required) |
+| `'2024/01/15 12:00:00'` | Slash-separated date (quotes required) |
 | `2h30m`, `1.5d`, `90s`, `500ms` | Duration (d h m s ms) |
 | `now - 7d` | Arithmetic with `+` and `-` |
 | `'2024-06-01 00:00:00' + 30d` | Add duration to datetime |
