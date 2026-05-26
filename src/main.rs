@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use chrono::{DateTime, Duration, FixedOffset, NaiveDateTime};
+use chrono::{DateTime, Duration, FixedOffset, Utc};
 use parser::Expression;
 use thiserror::Error;
 use web_sys::HtmlInputElement;
@@ -8,7 +8,7 @@ use yew::{html, Component, Context, Html, InputEvent, TargetCast};
 mod parser;
 
 fn now() -> i64 {
-    (stdweb::web::Date::now() / 1000.0) as i64
+    (js_sys::Date::now() / 1000.0) as i64
 }
 
 fn parse(input: &str, now: i64) -> Vec<Record> {
@@ -85,10 +85,9 @@ impl ToFormattedString for Duration {
 
 impl Record {
     fn timestamp(timestamp: i64, offset: FixedOffset) -> Self {
-        let naive_date_time = NaiveDateTime::from_timestamp_opt(timestamp, 0);
-        match naive_date_time {
-            Some(d) => Self::DateTime(DateTime::from_utc(d, offset)),
-            _ => Self::None,
+        match DateTime::<Utc>::from_timestamp(timestamp, 0) {
+            Some(d) => Self::DateTime(d.with_timezone(&offset)),
+            None => Self::None,
         }
     }
 
@@ -236,8 +235,7 @@ impl Component for Container {
                                 data-gramm="false"
                                 placeholder=""
                                 wrap = "off"
-                                >
-                                </textarea>
+                                />
                             </div>
                             <div class="date-format">
                                 <div> {
@@ -268,7 +266,7 @@ impl Component for Container {
 }
 
 fn main() {
-    yew::start_app::<Container>();
+    yew::Renderer::<Container>::new().render();
 }
 
 #[cfg(test)]
