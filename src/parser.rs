@@ -228,9 +228,16 @@ parser!(
         / d:days() {d}
         / ms:milliseconds() {ms}
 
+    rule unquoted_datetime() -> Expression
+        = ymd:ydm_fmt_dash() " " + hms:hms_fmt() " " + tz:tz_offset() end() { parse_datetime(tz, ymd, hms) }
+        / ymd:ydm_fmt_dash() " " + hms:hms_fmt() end() { parse_datetime(state.offset, ymd, hms) }
+
     rule timestamp() -> Expression
         = ("-")n:number()end() {Expression::Timestamp(-n as i64)}
-        / n:number()end() {Expression::Timestamp(n as i64)} / datetime() / $("now") {Expression::Timestamp(state.now)}
+        / t:unquoted_datetime() {t}
+        / n:number()end() {Expression::Timestamp(n as i64)}
+        / datetime()
+        / $("now") {Expression::Timestamp(state.now)}
 
     rule number() -> f64
         = n:$(['0'..='9']+(r"."(['0'..='9']+)?)?) { n.parse().unwrap() }
@@ -261,8 +268,19 @@ parser!(
             (hour, minute, second)
         }
 
+    rule tz_offset() -> FixedOffset
+        = "+" h:n_digit_number(2) ":" m:n_digit_number(2) {?
+            FixedOffset::east_opt(h as i32 * 3600 + m as i32 * 60)
+                .ok_or("invalid UTC offset")
+        }
+        / "-" h:n_digit_number(2) ":" m:n_digit_number(2) {?
+            FixedOffset::east_opt(-(h as i32 * 3600 + m as i32 * 60))
+                .ok_or("invalid UTC offset")
+        }
+
     rule datetime() -> Expression
-        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
+        = "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() " " + tz:tz_offset() "'" { parse_datetime(tz, ymd, hms) }
+        / "'" ymd:ydm_fmt_dash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
         / "'" ymd:ydm_fmt_dash() "T" + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
         / "'" ymd:ydm_fmt_slash() " " + hms:hms_fmt() "'" { parse_datetime(state.offset, ymd, hms) }
 });
@@ -518,6 +536,78 @@ mod test {
             Ok(Expression::Timestamp(d.timestamp())),
         );
     }
+    #[test]
+    fn datetime_with_offset() {
+        let records = vec![];
+        let state = State::new(FixedOffset::east_opt(0).unwrap(), 0, &records);
+        let tz = FixedOffset::east_opt(5 * 3600).unwrap();
+        let d = tz.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +05:00'", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        let tz_neg = FixedOffset::east_opt(-5 * 3600 - 1800).unwrap();
+        let d_neg = tz_neg.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 -05:30'", &state),
+            Ok(Expression::Timestamp(d_neg.timestamp())),
+        );
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +00:00'", &state),
+            Ok(Expression::Timestamp(
+                FixedOffset::east_opt(0).unwrap().with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap().timestamp()
+            )),
+        );
+        // offset in literal overrides the state offset
+        let state_plus1 = State::new(FixedOffset::east_opt(3600).unwrap(), 0, &records);
+        assert_eq!(
+            arithmetic::expression("'2014-05-06 10:08:07 +05:00'", &state_plus1),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        // out-of-range offset fails the rule rather than silently falling back to UTC
+        assert!(arithmetic::expression("'2014-05-06 10:08:07 +99:00'", &state).is_err());
+    }
+
+    #[test]
+    fn unquoted_datetime() {
+        let records = vec![];
+        let tz = FixedOffset::east_opt(3600).unwrap();
+        let state = State::new(tz, 0, &records);
+        let d = tz.with_ymd_and_hms(2014, 5, 6, 20, 8, 7).unwrap();
+        // unquoted, uses state offset
+        assert_eq!(
+            arithmetic::expression("2014-05-06 20:08:07", &state),
+            Ok(Expression::Timestamp(d.timestamp())),
+        );
+        // unquoted with inline offset
+        let tz5 = FixedOffset::east_opt(5 * 3600).unwrap();
+        let d5 = tz5.with_ymd_and_hms(2014, 5, 6, 10, 8, 7).unwrap();
+        assert_eq!(
+            arithmetic::expression("2014-05-06 10:08:07 +05:00", &state),
+            Ok(Expression::Timestamp(d5.timestamp())),
+        );
+        // bare number still works
+        assert_eq!(
+            arithmetic::expression("2024", &state),
+            Ok(Expression::Timestamp(2024)),
+        );
+        // arithmetic with timestamps still works
+        assert_eq!(
+            arithmetic::expression("2014-05-06 20:08:07 + 1h", &state),
+            Ok(Expression::Timestamp(d.timestamp() + 3600)),
+        );
+        // unquoted datetime with inline offset + arithmetic
+        assert_eq!(
+            arithmetic::expression("2014-05-06 10:08:07 +05:00 + 1h", &state),
+            Ok(Expression::Timestamp(d5.timestamp() + 3600)),
+        );
+        // subtraction of two datetimes gives a duration
+        assert_eq!(
+            arithmetic::expression("2014-05-06 20:08:07 - 2014-05-06 19:08:07", &state),
+            Ok(Expression::Duration(Duration::hours(1))),
+        );
+    }
+
     #[test]
     fn now() {
         let records = vec![];

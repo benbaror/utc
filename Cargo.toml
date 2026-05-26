@@ -7,7 +7,8 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-web-sys = { version = "0.3.56", features = ["Clipboard", "Navigator"] }
+web-sys = { version = "0.3.56", features = ["Navigator"] }
+wasm-bindgen = "0.2"
 js-sys = "0.3"
 yew = { version = '>=0.19.3', features = ["csr"] }
 regex = ">=1"
@@ -20,5 +21,3 @@ version = '>=0.4.19'
 default-features = false
 features = ["wasmbind", "js-sys"]
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(web_sys_unstable_apis)'] }

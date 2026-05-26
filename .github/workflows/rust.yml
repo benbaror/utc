@@ -10,7 +10,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: --cfg=web_sys_unstable_apis
 
 jobs:
   build:
@@ -18,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
     - name: Add wasm32 target
       run: rustup target add wasm32-unknown-unknown
     - name: Install trunk

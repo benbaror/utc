@@ -4,7 +4,18 @@ use chrono::{DateTime, Duration, FixedOffset, Utc};
 use parser::Expression;
 use thiserror::Error;
 use web_sys::HtmlInputElement;
+use wasm_bindgen::prelude::*;
 use yew::{html, Component, Context, Html, InputEvent, TargetCast};
+
+#[wasm_bindgen(inline_js = "
+export function write_to_clipboard(text) {
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(() => {}); return true; }
+    return false;
+}
+")]
+extern "C" {
+    fn write_to_clipboard(text: &str) -> bool;
+}
 mod parser;
 
 fn now() -> i64 {
@@ -149,17 +160,12 @@ impl Display for Container {
 }
 
 impl Container {
-    #[cfg(web_sys_unstable_apis)]
     fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
-        let window = web_sys::window().ok_or(ClipboardError::NotAvailable)?;
-        let clipboard = window.navigator().clipboard();
-        let _ = clipboard.write_text(&self.to_string());
-        Ok(())
-    }
-
-    #[cfg(not(web_sys_unstable_apis))]
-    fn copy_to_clipboard(&self) -> Result<(), ClipboardError> {
-        Err(ClipboardError::NotAvailable)
+        if write_to_clipboard(&self.to_string()) {
+            Ok(())
+        } else {
+            Err(ClipboardError::NotAvailable)
+        }
     }
 }
 
@@ -254,6 +260,19 @@ impl Component for Container {
                                 </div>
                             </div>
                         </div>
+                        <details class="help">
+                            <summary>{"Syntax"}</summary>
+                            <table class="help-table">
+                                <tr><td>{"1748000000"}</td><td>{"Unix timestamp → datetime"}</td></tr>
+                                <tr><td>{"now"}</td><td>{"Current time"}</td></tr>
+                                <tr><td>{"2024-01-15 12:00:00"}</td><td>{"Datetime → timestamp"}</td></tr>
+                                <tr><td>{"2024-01-15 12:00:00 +05:00"}</td><td>{"With UTC offset"}</td></tr>
+                                <tr><td>{"2h30m, 1.5d, 90s, 500ms"}</td><td>{"Duration (d h m s ms)"}</td></tr>
+                                <tr><td>{"now - 7d"}</td><td>{"Arithmetic: + and −"}</td></tr>
+                                <tr><td>{"#2 - #1"}</td><td>{"Reference a previous line"}</td></tr>
+                                <tr><td>{"#UTC+5, #UTC-8"}</td><td>{"Set timezone for lines below"}</td></tr>
+                            </table>
+                        </details>
 
                     </div>
                 </div>
