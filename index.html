@@ -9,11 +9,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>Utc - a unix time calculator</title>
-    <link rel="stylesheet" href="utc/index-9ef8f5359cdfe205.css" integrity="sha384-NZKhQdhCpLCuvMIw97WBJlU6MdMYLiJUZxOWUEzNLl3zW8nqC9Nd0oRmcNtRyNQ+"/>
+    <link rel="stylesheet" href="/utc/index-9ef8f5359cdfe205.css" integrity="sha384-NZKhQdhCpLCuvMIw97WBJlU6MdMYLiJUZxOWUEzNLl3zW8nqC9Nd0oRmcNtRyNQ+"/>
     
 <script type="module">
-import init, * as bindings from 'utc/unix_time_calculator-d220348740e0f5d9.js';
-const wasm = await init({ module_or_path: 'utc/unix_time_calculator-d220348740e0f5d9_bg.wasm' });
+import init, * as bindings from '/utc/unix_time_calculator-d220348740e0f5d9.js';
+const wasm = await init({ module_or_path: '/utc/unix_time_calculator-d220348740e0f5d9_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -22,6 +22,6 @@ window.wasmBindings = bindings;
 dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
 
 </script>
-<link rel="modulepreload" href="utc/unix_time_calculator-d220348740e0f5d9.js" crossorigin="anonymous" integrity="sha384-Zb2vuhCGC4Y16xmsPkjH/iGWFJQwb20j3D+F+rm7DxXciRzi4pLvfQUOSnfklQKZ"><link rel="modulepreload" href="utc/snippets/unix_time_calculator-9f675c496340f1cf/inline0.js" crossorigin="anonymous" integrity="sha384-g6tU8JfuEqL+Ux2nlbxvYL1Eyzyn54J/sknffwhqUR2l9St83DMGYkrfiubER3qs"><link rel="preload" href="utc/unix_time_calculator-d220348740e0f5d9_bg.wasm" crossorigin="anonymous" integrity="sha384-Ci8QQZVKTkpbwsE49Jj+qwar5luVsih97iQRFaM9wp2GtUnoYPoFWFRknlI5DDvS" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/utc/unix_time_calculator-d220348740e0f5d9.js" crossorigin="anonymous" integrity="sha384-Zb2vuhCGC4Y16xmsPkjH/iGWFJQwb20j3D+F+rm7DxXciRzi4pLvfQUOSnfklQKZ"><link rel="modulepreload" href="/utc/snippets/unix_time_calculator-9f675c496340f1cf/inline0.js" crossorigin="anonymous" integrity="sha384-g6tU8JfuEqL+Ux2nlbxvYL1Eyzyn54J/sknffwhqUR2l9St83DMGYkrfiubER3qs"><link rel="preload" href="/utc/unix_time_calculator-d220348740e0f5d9_bg.wasm" crossorigin="anonymous" integrity="sha384-Ci8QQZVKTkpbwsE49Jj+qwar5luVsih97iQRFaM9wp2GtUnoYPoFWFRknlI5DDvS" as="fetch" type="application/wasm"></head>
 <body></body>
 </html>
